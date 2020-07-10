@@ -14,7 +14,29 @@
     limitations under the License.
 */
 
+#include "ch.h"
 #include "hal.h"
+#include "portab.h"
+#include "usbcfg.h"
+
+// see: USB_CDC in ChibiOS testhal
+void usbSerialInit(void) {
+  /*
+   * Initializes a serial-over-USB CDC driver.
+   */
+  sduObjectInit(&PORTAB_SDU1);
+  sduStart(&PORTAB_SDU1, &serusbcfg);
+
+  /*
+   * Activates the USB driver and then the USB bus pull-up on D+.
+   * Note, a delay is inserted in order to not have to disconnect the cable
+   * after a reset.
+   */
+  usbDisconnectBus(serusbcfg.usbp);
+  chThdSleepMilliseconds(1500);
+  usbStart(serusbcfg.usbp, &usbcfg);
+  usbConnectBus(serusbcfg.usbp);
+}
 
 /*
  * Application entry point.
@@ -25,17 +47,31 @@ int main(void) {
    * System initializations.
    * - HAL initialization, this also initializes the configured device drivers
    *   and performs the board-specific initializations.
+   * - Kernel initialization, the main() function becomes a thread and the
+   *   RTOS is active.
    */
   halInit();
+  chSysInit();
+  
+  /*
+   * Board-dependent initialization.
+   */
+  portab_setup();
+  
+  /*
+   * Default values for GPIO
+   */
+  palWriteLine(LINE_LED_GREEN, 0);
+  palWriteLine(LINE_LED_RED, 0);
+  
+  usbSerialInit();
 
   /*
-   * Enabling interrupts, initialization done.
+   * main program loop
    */
-  osalSysEnable();
-
   while (true) {
     palToggleLine(LINE_LED_GREEN);
-    osalThreadSleepMilliseconds(500);
+    chThdSleepMilliseconds(500);
     palToggleLine(LINE_LED_RED);
   }
 }
