@@ -18,6 +18,7 @@
 #include "hal.h"
 #include "portab.h"
 #include "usbcfg.h"
+#include "comm_serial.h"
 
 // see: USB_CDC in ChibiOS testhal
 void usbSerialInit(void) {
@@ -65,6 +66,13 @@ int main(void) {
   palWriteLine(LINE_LED_RED, 0);
   
   usbSerialInit();
+  while (PORTAB_SDU1.config->usbp->state != USB_ACTIVE) {
+      palWriteLine(LINE_LED_RED, 1);
+      chThdSleepMilliseconds(100);
+  }
+  palWriteLine(LINE_LED_RED, 0);
+  // TODO: comm_serial_init((BaseSequentialStream *)&PORTAB_SDU1);
+
 
   /*
    * main program loop
@@ -72,6 +80,5 @@ int main(void) {
   while (true) {
     palToggleLine(LINE_LED_GREEN);
     chThdSleepMilliseconds(500);
-    palToggleLine(LINE_LED_RED);
   }
 }

@@ -122,6 +122,10 @@ CSRC = $(ALLCSRC) \
        $(TESTSRC) \
        $(CONFDIR)/portab.c \
        usbcfg.c \
+       crc.c \
+       packet.c \
+       commands.c \
+       comm_serial.c \
        main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
