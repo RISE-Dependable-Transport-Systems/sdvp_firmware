@@ -132,6 +132,8 @@ CSRC = $(ALLCSRC) \
        comm_serial.c \
        conf_general.c \
        i2c_bb.c \
+       pos.c \
+       buffer.c \
        main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
