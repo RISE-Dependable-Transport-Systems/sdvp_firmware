@@ -34,7 +34,7 @@ static THD_WORKING_AREA(serial_read_thread_wa, 512);
 static THD_WORKING_AREA(serial_process_thread_wa, 4096);
 static mutex_t send_mutex;
 static thread_t *process_tp;
-static BaseSequentialStream *serialStream;
+static BaseSequentialStream *m_serialStream;
 
 // Private functions
 static void process_packet(unsigned char *data, unsigned int len);
@@ -43,7 +43,7 @@ static THD_FUNCTION(serial_read_thread, arg);
 static THD_FUNCTION(serial_process_thread, arg);
 
 void comm_serial_init(BaseSequentialStream *serialStream) {
-	serialStream = serialStream;
+	m_serialStream = serialStream;
 	packet_init(send_packet, process_packet, PACKET_HANDLER);
 
 	chMtxObjectInit(&send_mutex);
@@ -70,7 +70,7 @@ static THD_FUNCTION(serial_read_thread, arg) {
 	int had_data = 0;
 
 	for(;;) {
-		len = streamRead(serialStream, (uint8_t*) buffer, 1);
+		len = streamRead(m_serialStream, (uint8_t*) buffer, 1);
 
 		for (i = 0;i < len;i++) {
 			serial_rx_buffer[serial_rx_write_pos++] = buffer[i];
@@ -119,5 +119,5 @@ static void process_packet(unsigned char *data, unsigned int len) {
 }
 
 static void send_packet(unsigned char *buffer, unsigned int len) {
-	streamWrite(serialStream, buffer, len);
+	streamWrite(m_serialStream, buffer, len);
 }

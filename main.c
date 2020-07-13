@@ -19,6 +19,7 @@
 #include "portab.h"
 #include "usbcfg.h"
 #include "comm_serial.h"
+#include "packet.h"
 
 // see: USB_CDC in ChibiOS testhal
 void usbSerialInit(void) {
@@ -70,15 +71,23 @@ int main(void) {
       palWriteLine(LINE_LED_RED, 1);
       chThdSleepMilliseconds(100);
   }
-  palWriteLine(LINE_LED_RED, 0);
-  // TODO: comm_serial_init((BaseSequentialStream *)&PORTAB_SDU1);
+  palWriteLine(LINE_LED_RED, 0); // USB-Serial connection is set up
+  comm_serial_init((BaseSequentialStream *)&PORTAB_SDU1);
 
 
   /*
    * main program loop
    */
   while (true) {
-    palToggleLine(LINE_LED_GREEN);
-    chThdSleepMilliseconds(500);
+	static int i = 0;
+	i++;
+
+	if (i % 50 == 0)
+		palToggleLine(LINE_LED_GREEN);
+
+	// packet timeout
+    packet_timerfunc();
+
+    chThdSleepMilliseconds(10);
   }
 }

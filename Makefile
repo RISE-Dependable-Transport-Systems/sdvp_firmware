@@ -126,6 +126,7 @@ CSRC = $(ALLCSRC) \
        packet.c \
        commands.c \
        comm_serial.c \
+       conf_general.c \
        main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
