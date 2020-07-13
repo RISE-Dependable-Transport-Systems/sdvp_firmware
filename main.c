@@ -20,6 +20,8 @@
 #include "usbcfg.h"
 #include "comm_serial.h"
 #include "packet.h"
+#include "chprintf.h"
+#include "bmi160_wrapper.h"
 
 // see: USB_CDC in ChibiOS testhal
 void usbSerialInit(void) {
@@ -38,6 +40,12 @@ void usbSerialInit(void) {
   chThdSleepMilliseconds(1500);
   usbStart(serusbcfg.usbp, &usbcfg);
   usbConnectBus(serusbcfg.usbp);
+}
+
+static void dump_imu(float *accel, float *gyro, float *mag) {
+	chprintf((BaseSequentialStream *)&PORTAB_SDU1, "### (%f, %f, %f)  - (%f, %f, %f)  - (%f, %f, %f) ###", accel[0], accel[1], accel[2],
+																									       gyro[0], gyro[1], gyro[2],
+																									       mag[0], mag[1], mag[2]);
 }
 
 /*
@@ -74,6 +82,8 @@ int main(void) {
   palWriteLine(LINE_LED_RED, 0); // USB-Serial connection is set up
   comm_serial_init((BaseSequentialStream *)&PORTAB_SDU1);
 
+  bmi160_wrapper_init(2);
+  bmi160_wrapper_set_read_callback(dump_imu);
 
   /*
    * main program loop

@@ -112,6 +112,10 @@ include $(CHIBIOS)/tools/mk/autobuild.mk
 #include $(CHIBIOS)/test/lib/test.mk
 #include $(CHIBIOS)/test/rt/rt_test.mk
 #include $(CHIBIOS)/test/oslib/oslib_test.mk
+include $(CHIBIOS)/os/hal/lib/streams/streams.mk
+
+# Custom files
+include imu/imu.mk
 
 # Define linker script file here
 LDSCRIPT= $(STARTUPLD)/STM32F407xG.ld
@@ -127,6 +131,7 @@ CSRC = $(ALLCSRC) \
        commands.c \
        comm_serial.c \
        conf_general.c \
+       i2c_bb.c \
        main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
