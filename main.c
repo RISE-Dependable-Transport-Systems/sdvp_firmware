@@ -24,6 +24,7 @@
 #include "conf_general.h"
 #include "bmi160_wrapper.h"
 #include "pos.h"
+#include "servo_pwm.h"
 
 // see: USB_CDC in ChibiOS testhal
 void usbSerialInit(void) {
@@ -77,6 +78,10 @@ int main(void) {
   comm_serial_init((BaseSequentialStream *)&PORTAB_SDU1);
 
   conf_general_init();
+
+  // car: init single servo, set to center
+  servo_pwm_init(0b0001);
+  servo_pwm_set(0, 0.5);
 
   // Init positioning (pos) and BMI160 IMU
   pos_init();
