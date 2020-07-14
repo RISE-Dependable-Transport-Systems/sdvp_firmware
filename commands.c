@@ -2,6 +2,7 @@
 #include "packet.h"
 #include "buffer.h"
 #include "conf_general.h"
+#include "datatypes.h"
 #include "pos.h"
 #include <stdint.h>
 
@@ -71,12 +72,14 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 
 		switch (packet_id) {
 		case CMD_GET_STATE: {
+			POS_STATE pos;
 			float accel[3];
 			float gyro[3];
 			float mag[3];
 
 			commands_set_send_func(func);
 
+			pos_get_pos(&pos);
 			pos_get_imu(accel, gyro, mag);
 
 			int32_t send_index = 0;
@@ -84,9 +87,9 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			m_send_buffer[send_index++] = CMD_GET_STATE; // 2
 			m_send_buffer[send_index++] = 12; // 3
 			m_send_buffer[send_index++] = 2; // 4
-			buffer_append_float32(m_send_buffer, 0.0, 1e6, &send_index); // 8
-			buffer_append_float32(m_send_buffer, 0.0, 1e6, &send_index); // 12
-			buffer_append_float32(m_send_buffer, 0.0, 1e6, &send_index); // 16
+			buffer_append_float32(m_send_buffer, pos.roll, 1e6, &send_index); // 8
+			buffer_append_float32(m_send_buffer, pos.pitch, 1e6, &send_index); // 12
+			buffer_append_float32(m_send_buffer, pos.yaw, 1e6, &send_index); // 16
 			buffer_append_float32(m_send_buffer, accel[0], 1e6, &send_index); // 20
 			buffer_append_float32(m_send_buffer, accel[1], 1e6, &send_index); // 24
 			buffer_append_float32(m_send_buffer, accel[2], 1e6, &send_index); // 28

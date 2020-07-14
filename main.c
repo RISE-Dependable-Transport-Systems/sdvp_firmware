@@ -75,7 +75,7 @@ int main(void) {
   palWriteLine(LINE_LED_RED, 0); // USB-Serial connection is set up
   comm_serial_init((BaseSequentialStream *)&PORTAB_SDU1);
 
-  // init positioning (pos) and BMI160 IMU
+  // Init positioning (pos) and BMI160 IMU
   pos_init();
   bmi160_wrapper_init(500);
   bmi160_wrapper_set_read_callback(pos_imu_data_callback);

@@ -134,6 +134,7 @@ CSRC = $(ALLCSRC) \
        i2c_bb.c \
        pos.c \
        buffer.c \
+       utils.c \
        main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
@@ -176,7 +177,7 @@ UINCDIR =
 ULIBDIR =
 
 # List all user libraries here
-ULIBS =
+ULIBS = -lm
 
 #
 # End of user section
