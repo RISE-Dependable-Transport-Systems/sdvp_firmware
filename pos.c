@@ -2,19 +2,22 @@
 
 #include "ch.h"
 #include "utils.h"
+#include "conf_general.h"
 #include "ahrs.h"
 #include <math.h>
 
 // Private variables
 static ATTITUDE_INFO m_att;
 static POS_STATE m_pos;
+static mutex_t m_mutex_pos;
 static bool m_attitude_init_done;
 static float m_accel[3];
 static float m_gyro[3];
 static float m_mag[3];
 static float m_mag_raw[3];
 static float m_imu_yaw_offset;
-static mutex_t m_mutex_pos;
+static float m_yaw_imu_clamp;
+static bool m_yaw_imu_clamp_set;
 
 // Private functions
 static void update_orientation_angles(float *accel, float *gyro, float *mag, float dt);
@@ -58,17 +61,17 @@ static void update_orientation_angles(float *accel, float *gyro, float *mag, flo
 	 * y_calibrated = scalefactor_y[1] * xt_raw + scalefactor_y[2] * yt_raw + scalefactor_y[3] * zt_raw;
 	 * z_calibrated = scalefactor_z[1] * xt_raw + scalefactor_z[2] * yt_raw + scalefactor_z[3] * zt_raw;
 	 */
-//	if (main_config.mag_comp) {
-//		float mag_t[3];
-//
-//		mag_t[0] = mag[0] - main_config.mag_cal_cx;
-//		mag_t[1] = mag[1] - main_config.mag_cal_cy;
-//		mag_t[2] = mag[2] - main_config.mag_cal_cz;
-//
-//		mag[0] = main_config.mag_cal_xx * mag_t[0] + main_config.mag_cal_xy * mag_t[1] + main_config.mag_cal_xz * mag_t[2];
-//		mag[1] = main_config.mag_cal_yx * mag_t[0] + main_config.mag_cal_yy * mag_t[1] + main_config.mag_cal_yz * mag_t[2];
-//		mag[2] = main_config.mag_cal_zx * mag_t[0] + main_config.mag_cal_zy * mag_t[1] + main_config.mag_cal_zz * mag_t[2];
-//	}
+	if (main_config.mag_comp) {
+		float mag_t[3];
+
+		mag_t[0] = mag[0] - main_config.mag_cal_cx;
+		mag_t[1] = mag[1] - main_config.mag_cal_cy;
+		mag_t[2] = mag[2] - main_config.mag_cal_cz;
+
+		mag[0] = main_config.mag_cal_xx * mag_t[0] + main_config.mag_cal_xy * mag_t[1] + main_config.mag_cal_xz * mag_t[2];
+		mag[1] = main_config.mag_cal_yx * mag_t[0] + main_config.mag_cal_yy * mag_t[1] + main_config.mag_cal_yz * mag_t[2];
+		mag[2] = main_config.mag_cal_zx * mag_t[0] + main_config.mag_cal_zy * mag_t[1] + main_config.mag_cal_zz * mag_t[2];
+	}
 
 	// Swap mag X and Y to match the accelerometer
 	{
@@ -141,64 +144,64 @@ static void update_orientation_angles(float *accel, float *gyro, float *mag, flo
 	m_pos.roll_rate = -m_gyro[0] * 180.0 / M_PI;
 	m_pos.pitch_rate = m_gyro[1] * 180.0 / M_PI;
 
-//	if (main_config.mag_use) {
-//		static float yaw_now = 0;
-//		static float yaw_imu_last = 0;
-//
-//		float yaw_imu_diff = utils_angle_difference_rad(yaw, yaw_imu_last);
-//		yaw_imu_last = yaw;
-//		yaw_now += yaw_imu_diff;
-//
-//		float diff = utils_angle_difference_rad(yaw_mag, yaw_now);
-//		yaw_now += SIGN(diff) * main_config.yaw_mag_gain * M_PI / 180.0 * dt;
-//		utils_norm_angle_rad(&yaw_now);
-//
-//		m_pos.yaw_imu = yaw_now * 180.0 / M_PI;
-//	} else {
+	if (main_config.mag_use) {
+		static float yaw_now = 0;
+		static float yaw_imu_last = 0;
+
+		float yaw_imu_diff = utils_angle_difference_rad(yaw, yaw_imu_last);
+		yaw_imu_last = yaw;
+		yaw_now += yaw_imu_diff;
+
+		float diff = utils_angle_difference_rad(yaw_mag, yaw_now);
+		yaw_now += SIGN(diff) * main_config.yaw_mag_gain * M_PI / 180.0 * dt;
+		utils_norm_angle_rad(&yaw_now);
+
+		m_pos.yaw_imu = yaw_now * 180.0 / M_PI;
+	} else {
 		m_pos.yaw_imu = yaw * 180.0 / M_PI;
-//	}
+	}
 
 	utils_norm_angle(&m_pos.yaw_imu);
 	m_pos.yaw_rate = -m_gyro[2] * 180.0 / M_PI;
 
 	// Correct yaw
-//#if MAIN_MODE == MAIN_MODE_CAR
-//	{
-//		if (!m_yaw_imu_clamp_set) {
-//			m_yaw_imu_clamp = m_pos.yaw_imu - m_imu_yaw_offset;
-//			m_yaw_imu_clamp_set = true;
-//		}
-//
-//		if (main_config.car.clamp_imu_yaw_stationary && fabsf(m_pos.speed) < 0.05) {
-//			m_imu_yaw_offset = m_pos.yaw_imu - m_yaw_imu_clamp;
-//		} else {
-//			m_yaw_imu_clamp = m_pos.yaw_imu - m_imu_yaw_offset;
-//		}
-//	}
-//
-//	if (main_config.car.yaw_use_odometry) {
-//		if (main_config.car.yaw_imu_gain > 1e-10) {
-//			float ang_diff = utils_angle_difference(m_pos.yaw, m_pos.yaw_imu - m_imu_yaw_offset);
-//
-//			if (ang_diff > 1.2 * main_config.car.yaw_imu_gain) {
-//				m_pos.yaw -= main_config.car.yaw_imu_gain;
-//				utils_norm_angle(&m_pos.yaw);
-//			} else if (ang_diff < -1.2 * main_config.car.yaw_imu_gain) {
-//				m_pos.yaw += main_config.car.yaw_imu_gain;
-//				utils_norm_angle(&m_pos.yaw);
-//			} else {
-//				m_pos.yaw -= ang_diff;
-//				utils_norm_angle(&m_pos.yaw);
-//			}
-//		}
-//	} else {
-//		m_pos.yaw = m_pos.yaw_imu - m_imu_yaw_offset;
-//		utils_norm_angle(&m_pos.yaw);
-//	}
-//#else
+#if MAIN_MODE == MAIN_MODE_CAR
+	{
+		if (!m_yaw_imu_clamp_set) {
+			m_yaw_imu_clamp = m_pos.yaw_imu - m_imu_yaw_offset;
+			m_yaw_imu_clamp_set = true;
+		}
+
+		if (main_config.car.clamp_imu_yaw_stationary && fabsf(m_pos.speed) < 0.05) {
+			m_imu_yaw_offset = m_pos.yaw_imu - m_yaw_imu_clamp;
+		} else {
+			m_yaw_imu_clamp = m_pos.yaw_imu - m_imu_yaw_offset;
+		}
+	}
+
+	if (main_config.car.yaw_use_odometry) {
+		if (main_config.car.yaw_imu_gain > 1e-10) {
+			float ang_diff = utils_angle_difference(m_pos.yaw, m_pos.yaw_imu - m_imu_yaw_offset);
+
+			if (ang_diff > 1.2 * main_config.car.yaw_imu_gain) {
+				m_pos.yaw -= main_config.car.yaw_imu_gain;
+				utils_norm_angle(&m_pos.yaw);
+			} else if (ang_diff < -1.2 * main_config.car.yaw_imu_gain) {
+				m_pos.yaw += main_config.car.yaw_imu_gain;
+				utils_norm_angle(&m_pos.yaw);
+			} else {
+				m_pos.yaw -= ang_diff;
+				utils_norm_angle(&m_pos.yaw);
+			}
+		}
+	} else {
+		m_pos.yaw = m_pos.yaw_imu - m_imu_yaw_offset;
+		utils_norm_angle(&m_pos.yaw);
+	}
+#else
 	m_pos.yaw = m_pos.yaw_imu - m_imu_yaw_offset;
 	utils_norm_angle(&m_pos.yaw);
-//#endif
+#endif
 
 	m_pos.q0 = m_att.q0;
 	m_pos.q1 = m_att.q1;

@@ -50,6 +50,12 @@
 #define STM32_VDD                   300U
 
 /*
+ * Board input resistors.
+ */
+#define VIN_R1						39000.0
+#define VIN_R2						2200.0
+
+/*
  * MCU type as defined in the ST header.
  */
 #define STM32F407xx

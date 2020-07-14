@@ -21,6 +21,7 @@
 #include "comm_serial.h"
 #include "packet.h"
 #include "chprintf.h"
+#include "conf_general.h"
 #include "bmi160_wrapper.h"
 #include "pos.h"
 
@@ -74,6 +75,8 @@ int main(void) {
   }
   palWriteLine(LINE_LED_RED, 0); // USB-Serial connection is set up
   comm_serial_init((BaseSequentialStream *)&PORTAB_SDU1);
+
+  conf_general_init();
 
   // Init positioning (pos) and BMI160 IMU
   pos_init();

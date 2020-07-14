@@ -85,8 +85,8 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			int32_t send_index = 0;
 			m_send_buffer[send_index++] = id_ret; // 1
 			m_send_buffer[send_index++] = CMD_GET_STATE; // 2
-			m_send_buffer[send_index++] = 12; // 3
-			m_send_buffer[send_index++] = 2; // 4
+			m_send_buffer[send_index++] = FW_VERSION_MAJOR; // 3
+			m_send_buffer[send_index++] = FW_VERSION_MINOR; // 4
 			buffer_append_float32(m_send_buffer, pos.roll, 1e6, &send_index); // 8
 			buffer_append_float32(m_send_buffer, pos.pitch, 1e6, &send_index); // 12
 			buffer_append_float32(m_send_buffer, pos.yaw, 1e6, &send_index); // 16
