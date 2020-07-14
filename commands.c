@@ -3,8 +3,11 @@
 #include "buffer.h"
 #include "conf_general.h"
 #include "datatypes.h"
+#include "terminal.h"
 #include "pos.h"
 #include <stdint.h>
+#include <stdarg.h>
+#include <stdio.h>
 
 // Private variables
 static uint8_t m_send_buffer[PACKET_MAX_PL_LEN];
@@ -71,6 +74,12 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 		}
 
 		switch (packet_id) {
+		case CMD_TERMINAL_CMD: {
+			commands_set_send_func(func);
+
+			data[len] = '\0';
+			terminal_process_string((char*)data);
+		} break;
 		case CMD_GET_STATE: {
 			POS_STATE pos;
 			float accel[3];
@@ -121,4 +130,26 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			break;
 		}
 	}
+}
+
+void commands_printf(const char* format, ...) {
+//	if (!m_init_done) {
+//		return;
+//	}
+
+	//chMtxLock(&m_print_gps);
+	va_list arg;
+	va_start (arg, format);
+	int len;
+	static char print_buffer[512];
+
+	print_buffer[0] = main_id;
+	print_buffer[1] = CMD_PRINTF;
+	len = vsnprintf(print_buffer + 2, 509, format, arg);
+	va_end (arg);
+
+	if(len > 0) {
+		commands_send_packet((unsigned char*)print_buffer, (len<509) ? len + 2: 512);
+	}
+	//chMtxUnlock(&m_print_gps);
 }

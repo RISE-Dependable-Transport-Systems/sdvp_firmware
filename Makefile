@@ -125,6 +125,7 @@ LDSCRIPT= $(STARTUPLD)/STM32F407xG.ld
 CSRC = $(ALLCSRC) \
        $(TESTSRC) \
        $(CONFDIR)/portab.c \
+       $(CHIBIOS)/os/various/syscalls.c \
        usbcfg.c \
        crc.c \
        packet.c \
@@ -135,6 +136,7 @@ CSRC = $(ALLCSRC) \
        pos.c \
        buffer.c \
        utils.c \
+       terminal.c \
        main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
