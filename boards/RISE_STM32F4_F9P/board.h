@@ -56,9 +56,20 @@
 #define VIN_R2						2200.0
 
 /*
+ * Necessary to get TIM9 working in ChibiOS 20.3.1
+ */
+#define STM32_TIM9_SUPPRESS_ISR
+#define STM32_IRQ_TIM1_BRK_TIM9_PRIORITY    7
+#define STM32_IRQ_TIM1_UP_TIM10_PRIORITY    7
+#define STM32_IRQ_TIM1_TRGCO_TIM11_PRIORITY 7
+#define STM32_IRQ_TIM1_CC_PRIORITY          7
+#define STM32_TIM1_BRK_TIM9_NUMBER          24
+#define STM32_TIM1_BRK_TIM9_HANDLER         VectorA0
+
+/*
  * MCU type as defined in the ST header.
  */
-#define STM32F407xx
+#define STM32F405xx
 
 /*
  * IO pins assignments.

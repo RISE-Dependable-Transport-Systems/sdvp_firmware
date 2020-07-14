@@ -44,23 +44,22 @@ static PWMConfig pwmcfg3 = {
 #endif
 };
 
-// TODO: figure out how to enable TIM9 on recent ChibiOS
-//static PWMConfig pwmcfg9 = {
-//		TIM_CLOCK,
-//		(uint16_t)((uint32_t)TIM_CLOCK / (uint32_t)SERVO_UPDATE_RATE),
-//		NULL,
-//		{
-//				{PWM_OUTPUT_DISABLED, NULL},
-//				{PWM_OUTPUT_DISABLED, NULL},
-//				{PWM_OUTPUT_DISABLED, NULL},
-//				{PWM_OUTPUT_DISABLED, NULL}
-//		},
-//		0,
-//		0,
-//#if STM32_PWM_USE_ADVANCED
-//		0
-//#endif
-//};
+static PWMConfig pwmcfg9 = {
+		TIM_CLOCK,
+		(uint16_t)((uint32_t)TIM_CLOCK / (uint32_t)SERVO_UPDATE_RATE),
+		NULL,
+		{
+				{PWM_OUTPUT_DISABLED, NULL},
+				{PWM_OUTPUT_DISABLED, NULL},
+				{PWM_OUTPUT_DISABLED, NULL},
+				{PWM_OUTPUT_DISABLED, NULL}
+		},
+		0,
+		0,
+#if STM32_PWM_USE_ADVANCED
+		0
+#endif
+};
 
 void servo_pwm_init(uint8_t servo_enable_mask) {
 	if (servo_enable_mask & (1 << 0))
@@ -69,14 +68,14 @@ void servo_pwm_init(uint8_t servo_enable_mask) {
 	if (servo_enable_mask & (1 << 1))
 		pwmcfg3.channels[3].mode = PWM_OUTPUT_ACTIVE_HIGH;
 
-//	if (servo_enable_mask & (1 << 2))
-//		pwmcfg9.channels[0].mode = PWM_OUTPUT_ACTIVE_HIGH;
-//
-//	if (servo_enable_mask & (1 << 3))
-//		pwmcfg9.channels[1].mode = PWM_OUTPUT_ACTIVE_HIGH;
+	if (servo_enable_mask & (1 << 2))
+		pwmcfg9.channels[0].mode = PWM_OUTPUT_ACTIVE_HIGH;
+
+	if (servo_enable_mask & (1 << 3))
+		pwmcfg9.channels[1].mode = PWM_OUTPUT_ACTIVE_HIGH;
 
 	pwmStart(&PWMD3, &pwmcfg3);
-//	pwmStart(&PWMD9, &pwmcfg9);
+	pwmStart(&PWMD9, &pwmcfg9);
 }
 
 void servo_pwm_set_all(float pulse_width) {
@@ -118,19 +117,19 @@ void servo_pwm_set(uint8_t channel, float pulse_width) {
 		pwmEnableChannel(&PWMD3, 3, cnt_val);
 		break;
 
-//	case 2:
-//		pwmEnableChannel(&PWMD9, 0, cnt_val);
-//		break;
-//
-//	case 3:
-//		pwmEnableChannel(&PWMD9, 1, cnt_val);
-//		break;
+	case 2:
+		pwmEnableChannel(&PWMD9, 0, cnt_val);
+		break;
+
+	case 3:
+		pwmEnableChannel(&PWMD9, 1, cnt_val);
+		break;
 
 	case ALL_CHANNELS:
 		pwmEnableChannel(&PWMD3, 2, cnt_val);
 		pwmEnableChannel(&PWMD3, 3, cnt_val);
-//		pwmEnableChannel(&PWMD9, 0, cnt_val);
-//		pwmEnableChannel(&PWMD9, 1, cnt_val);
+		pwmEnableChannel(&PWMD9, 0, cnt_val);
+		pwmEnableChannel(&PWMD9, 1, cnt_val);
 		break;
 
 	default:
