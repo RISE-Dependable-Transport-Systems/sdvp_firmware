@@ -2,14 +2,26 @@
 
 #include "ch.h"
 #include "utils.h"
+#include "commands.h" // TODO might make sense to factor out
 #include "conf_general.h"
 #include "ahrs.h"
 #include <math.h>
+#include <stdlib.h>
+
+#define POS_HISTORY_LEN					100
 
 // Private variables
-static ATTITUDE_INFO m_att;
+static int32_t m_ms_today;
 static POS_STATE m_pos;
+static POS_POINT m_pos_history[POS_HISTORY_LEN];
+static int m_pos_history_ptr;
+static ATTITUDE_INFO m_att;
 static mutex_t m_mutex_pos;
+static int32_t m_pps_cnt;
+static bool m_en_delay_comp;
+static bool m_gps_corr_print;
+static bool m_pos_history_print;
+// IMU
 static bool m_attitude_init_done;
 static float m_accel[3];
 static float m_gyro[3];
@@ -18,17 +30,45 @@ static float m_mag_raw[3];
 static float m_imu_yaw_offset;
 static float m_yaw_imu_clamp;
 static bool m_yaw_imu_clamp_set;
+// GNSS
+static GPS_STATE m_gps;
+static mutex_t m_mutex_gps;
+static bool m_ubx_pos_valid;
+static int32_t m_nma_last_time;
+static nmea_gsv_info_t m_gpgsv_last;
+static nmea_gsv_info_t m_glgsv_last;
 
 // Private functions
 static void update_orientation_angles(float *accel, float *gyro, float *mag, float dt);
+static void init_gps_local(GPS_STATE *gps);
+static POS_POINT get_closest_point_to_time(int32_t time);
+static void correct_pos_gps(POS_STATE *pos);
 
 void pos_init(void) {
 	ahrs_init_attitude_info(&m_att);
 	m_attitude_init_done = false;
 	memset(&m_pos, 0, sizeof(m_pos));
+	memset(&m_gps, 0, sizeof(m_gps));
 	m_imu_yaw_offset = 0.0;
 
+	m_ubx_pos_valid = true;
+	m_nma_last_time = 0;
+	memset(&m_pos_history, 0, sizeof(m_pos_history));
+	m_pos_history_ptr = 0;
+	m_pos_history_print = false;
+	m_gps_corr_print = false;
+	m_en_delay_comp = true;
+	m_pps_cnt = 0;
+	memset(&m_gpgsv_last, 0, sizeof(m_gpgsv_last));
+	memset(&m_glgsv_last, 0, sizeof(m_glgsv_last));
+
+
+	m_yaw_imu_clamp = 0.0;
+	m_yaw_imu_clamp_set = false;
+
+	m_ms_today = -1;
 	chMtxObjectInit(&m_mutex_pos);
+	chMtxObjectInit(&m_mutex_gps);
 }
 
 void pos_imu_data_callback(float *accel, float *gyro, float *mag) {
@@ -238,118 +278,240 @@ void pos_get_imu(float *accel, float *gyro, float *mag) {
 }
 
 void pos_input_nmea(const char *data) {
-	// TODO
-//	nmea_gga_info_t gga;
-//	static nmea_gsv_info_t gpgsv;
-//	static nmea_gsv_info_t glgsv;
-//	int gga_res = utils_decode_nmea_gga(data, &gga);
-//	int gpgsv_res = utils_decode_nmea_gsv("GP", data, &gpgsv);
-//	int glgsv_res = utils_decode_nmea_gsv("GL", data, &glgsv);
-//
-//	if (gpgsv_res == 1) {
-//		utils_sync_nmea_gsv_info(&m_gpgsv_last, &gpgsv);
-//	}
-//
-//	if (glgsv_res == 1) {
-//		utils_sync_nmea_gsv_info(&m_glgsv_last, &glgsv);
-//	}
-//
-//	if (gga.t_tow >= 0) {
-//		m_nma_last_time = gga.t_tow;
-//
-//#if !(UBLOX_EN && UBLOX_USE_PPS) && !GPS_EXT_PPS
-//		m_ms_today = gga.t_tow;
-//#endif
-//	}
-//
-//	// Only use valid fixes
-//	if (gga.fix_type == 1 || gga.fix_type == 2 || gga.fix_type == 4 || gga.fix_type == 5) {
-//		// Convert llh to ecef
-//		double sinp = sin(gga.lat * D_PI / D(180.0));
-//		double cosp = cos(gga.lat * D_PI / D(180.0));
-//		double sinl = sin(gga.lon * D_PI / D(180.0));
-//		double cosl = cos(gga.lon * D_PI / D(180.0));
-//		double e2 = FE_WGS84 * (D(2.0) - FE_WGS84);
-//		double v = RE_WGS84 / sqrt(D(1.0) - e2 * sinp * sinp);
-//
-//		chMtxLock(&m_mutex_gps);
-//
-//		m_gps.lat = gga.lat;
-//		m_gps.lon = gga.lon;
-//		m_gps.height = gga.height;
-//		m_gps.fix_type = gga.fix_type;
-//		m_gps.sats = gga.n_sat;
-//		m_gps.ms = gga.t_tow;
-//		m_gps.x = (v + gga.height) * cosp * cosl;
-//		m_gps.y = (v + gga.height) * cosp * sinl;
-//		m_gps.z = (v * (D(1.0) - e2) + gga.height) * sinp;
-//
-//		// Continue if ENU frame is initialized
-//		if (m_gps.local_init_done) {
-//			float dx = (float)(m_gps.x - m_gps.ix);
-//			float dy = (float)(m_gps.y - m_gps.iy);
-//			float dz = (float)(m_gps.z - m_gps.iz);
-//
-//			m_gps.lx = m_gps.r1c1 * dx + m_gps.r1c2 * dy + m_gps.r1c3 * dz;
-//			m_gps.ly = m_gps.r2c1 * dx + m_gps.r2c2 * dy + m_gps.r2c3 * dz;
-//			m_gps.lz = m_gps.r3c1 * dx + m_gps.r3c2 * dy + m_gps.r3c3 * dz;
-//
-//			float px = m_gps.lx;
-//			float py = m_gps.ly;
-//
-//			// Apply antenna offset
-//			const float s_yaw = sinf(-m_pos.yaw * M_PI / 180.0);
-//			const float c_yaw = cosf(-m_pos.yaw * M_PI / 180.0);
-//			px -= c_yaw * main_config.gps_ant_x - s_yaw * main_config.gps_ant_y;
-//			py -= s_yaw * main_config.gps_ant_x + c_yaw * main_config.gps_ant_y;
-//
-//			chMtxLock(&m_mutex_pos);
-//
-//			m_pos.px_gps_last = m_pos.px_gps;
-//			m_pos.py_gps_last = m_pos.py_gps;
-//			m_pos.pz_gps_last = m_pos.pz_gps;
-//			m_pos.gps_ms_last = m_pos.gps_ms;
-//
-//			m_pos.px_gps = px;
-//			m_pos.py_gps = py;
-//			m_pos.pz_gps = m_gps.lz;
-//			m_pos.gps_ms = m_gps.ms;
-//			m_pos.gps_fix_type = m_gps.fix_type;
-//
-//			// Correct position
-//			// Optionally require RTK and good ublox quality indication.
-//			if (main_config.gps_comp &&
-//					(!main_config.gps_req_rtk || (gga.fix_type == 4 || gga.fix_type == 5)) &&
-//					(!main_config.gps_use_ubx_info || m_ubx_pos_valid)) {
-//
-//				m_pos.gps_last_corr_diff = sqrtf(SQ(m_pos.px - m_pos.px_gps) +
-//						SQ(m_pos.py - m_pos.py_gps));
-//
-//				correct_pos_gps(&m_pos);
-//				m_pos.gps_corr_time = chVTGetSystemTimeX();
-//
-//#if MAIN_MODE == MAIN_MODE_CAR
-//				m_pos.pz = m_pos.pz_gps - m_pos.gps_ground_level;
-//#elif MAIN_MODE == MAIN_MODE_MULTIROTOR
-//				// Update height from GPS if ultrasound measurements haven't been received for a while
-//				if (ST2MS(chVTTimeElapsedSinceX(m_pos.ultra_update_time)) > 250) {
-//					m_pos.pz = m_pos.pz_gps - m_pos.gps_ground_level;
-//				}
-//#endif
-//			}
-//
-//			m_pos.gps_corr_cnt = 0.0;
-//
-//			chMtxUnlock(&m_mutex_pos);
-//		} else {
-//			init_gps_local(&m_gps);
-//			m_gps.local_init_done = true;
-//		}
-//
-//		m_gps.update_time = chVTGetSystemTimeX();
-//
-//		chMtxUnlock(&m_mutex_gps);
-//	}
-//
-//	return gga_res >= 0;
+	nmea_gga_info_t gga;
+	static nmea_gsv_info_t gpgsv;
+	static nmea_gsv_info_t glgsv;
+	int gga_res = utils_decode_nmea_gga(data, &gga);
+	int gpgsv_res = utils_decode_nmea_gsv("GP", data, &gpgsv);
+	int glgsv_res = utils_decode_nmea_gsv("GL", data, &glgsv);
+
+	if (gpgsv_res == 1) {
+		utils_sync_nmea_gsv_info(&m_gpgsv_last, &gpgsv);
+	}
+
+	if (glgsv_res == 1) {
+		utils_sync_nmea_gsv_info(&m_glgsv_last, &glgsv);
+	}
+
+	if (gga.t_tow >= 0) {
+		m_nma_last_time = gga.t_tow;
+	}
+
+	// Only use valid fixes
+	if (gga.fix_type == 1 || gga.fix_type == 2 || gga.fix_type == 4 || gga.fix_type == 5) {
+		// Convert llh to ecef
+		double sinp = sin(gga.lat * D_PI / D(180.0));
+		double cosp = cos(gga.lat * D_PI / D(180.0));
+		double sinl = sin(gga.lon * D_PI / D(180.0));
+		double cosl = cos(gga.lon * D_PI / D(180.0));
+		double e2 = FE_WGS84 * (D(2.0) - FE_WGS84);
+		double v = RE_WGS84 / sqrt(D(1.0) - e2 * sinp * sinp);
+
+		chMtxLock(&m_mutex_gps);
+
+		m_gps.lat = gga.lat;
+		m_gps.lon = gga.lon;
+		m_gps.height = gga.height;
+		m_gps.fix_type = gga.fix_type;
+		m_gps.sats = gga.n_sat;
+		m_gps.ms = gga.t_tow;
+		m_gps.x = (v + gga.height) * cosp * cosl;
+		m_gps.y = (v + gga.height) * cosp * sinl;
+		m_gps.z = (v * (D(1.0) - e2) + gga.height) * sinp;
+
+		// Continue if ENU frame is initialized
+		if (m_gps.local_init_done) {
+			float dx = (float)(m_gps.x - m_gps.ix);
+			float dy = (float)(m_gps.y - m_gps.iy);
+			float dz = (float)(m_gps.z - m_gps.iz);
+
+			m_gps.lx = m_gps.r1c1 * dx + m_gps.r1c2 * dy + m_gps.r1c3 * dz;
+			m_gps.ly = m_gps.r2c1 * dx + m_gps.r2c2 * dy + m_gps.r2c3 * dz;
+			m_gps.lz = m_gps.r3c1 * dx + m_gps.r3c2 * dy + m_gps.r3c3 * dz;
+
+			float px = m_gps.lx;
+			float py = m_gps.ly;
+
+			// Apply antenna offset
+			const float s_yaw = sinf(-m_pos.yaw * M_PI / 180.0);
+			const float c_yaw = cosf(-m_pos.yaw * M_PI / 180.0);
+			px -= c_yaw * main_config.gps_ant_x - s_yaw * main_config.gps_ant_y;
+			py -= s_yaw * main_config.gps_ant_x + c_yaw * main_config.gps_ant_y;
+
+			chMtxLock(&m_mutex_pos);
+
+			m_pos.px_gps_last = m_pos.px_gps;
+			m_pos.py_gps_last = m_pos.py_gps;
+			m_pos.pz_gps_last = m_pos.pz_gps;
+			m_pos.gps_ms_last = m_pos.gps_ms;
+
+			m_pos.px_gps = px;
+			m_pos.py_gps = py;
+			m_pos.pz_gps = m_gps.lz;
+			m_pos.gps_ms = m_gps.ms;
+			m_pos.gps_fix_type = m_gps.fix_type;
+
+			// Correct position
+			// Optionally require RTK and good ublox quality indication.
+			if (main_config.gps_comp &&
+					(!main_config.gps_req_rtk || (gga.fix_type == 4 || gga.fix_type == 5)) &&
+					(!main_config.gps_use_ubx_info || m_ubx_pos_valid)) {
+
+				m_pos.gps_last_corr_diff = sqrtf(SQ(m_pos.px - m_pos.px_gps) +
+						SQ(m_pos.py - m_pos.py_gps));
+
+				correct_pos_gps(&m_pos);
+				m_pos.gps_corr_time = chVTGetSystemTimeX();
+
+				m_pos.pz = m_pos.pz_gps - m_pos.gps_ground_level;
+			}
+
+			m_pos.gps_corr_cnt = 0.0;
+
+			chMtxUnlock(&m_mutex_pos);
+		} else {
+			init_gps_local(&m_gps);
+			m_gps.local_init_done = true;
+		}
+
+		m_gps.update_time = chVTGetSystemTimeX();
+
+		chMtxUnlock(&m_mutex_gps);
+	}
+
+	if (gga_res >= 0) // forward NMEA if decoded
+		commands_send_nmea(data, strlen(data));
+}
+
+static POS_POINT get_closest_point_to_time(int32_t time) {
+	int32_t ind = m_pos_history_ptr > 0 ? m_pos_history_ptr - 1 : POS_HISTORY_LEN - 1;
+	int32_t min_diff = abs(time - m_pos_history[ind].time);
+	int32_t ind_use = ind;
+
+	int cnt = 0;
+	for (;;) {
+		ind = ind > 0 ? ind - 1 : POS_HISTORY_LEN - 1;
+
+		if (ind == m_pos_history_ptr) {
+			break;
+		}
+
+		int32_t diff = abs(time - m_pos_history[ind].time);
+
+		if (diff < min_diff) {
+			min_diff = diff;
+			ind_use = ind;
+		} else {
+			break;
+		}
+
+		cnt++;
+	}
+
+	return m_pos_history[ind_use];
+}
+
+static void correct_pos_gps(POS_STATE *pos) {
+	{
+		static int sample = 0;
+		if (m_pos_history_print) {
+			int32_t diff = m_ms_today - pos->gps_ms;
+			commands_printf("Age: %d ms, PPS_CNT: %d", diff, m_pps_cnt);
+			if (sample == 0) {
+				commands_init_plot("Sample", "Age (ms)");
+				commands_plot_add_graph("Delay");
+				commands_plot_set_graph(0);
+			}
+			commands_send_plot_points(sample++, diff);
+		} else {
+			sample = 0;
+		}
+	}
+
+	// Angle
+	if (fabsf(pos->speed * 3.6f) > 0.5 || 1) {
+		float yaw_gps = -atan2f(pos->py_gps - pos->gps_ang_corr_y_last_gps,
+				pos->px_gps - pos->gps_ang_corr_x_last_gps) * 180.0 / M_PI;
+		POS_POINT closest = get_closest_point_to_time(
+				(pos->gps_ms + pos->gps_ang_corr_last_gps_ms) / 2.0);
+		float yaw_diff = utils_angle_difference(yaw_gps, closest.yaw);
+		utils_step_towards(&m_imu_yaw_offset, m_imu_yaw_offset - yaw_diff,
+				main_config.gps_corr_gain_yaw * pos->gps_corr_cnt);
+	}
+
+	utils_norm_angle(&m_imu_yaw_offset);
+
+	// Position
+	float gain = main_config.gps_corr_gain_stat +
+			main_config.gps_corr_gain_dyn * pos->gps_corr_cnt;
+
+	POS_POINT closest = get_closest_point_to_time(m_en_delay_comp ? pos->gps_ms : m_ms_today);
+	POS_POINT closest_corr = closest;
+
+	{
+		static int sample = 0;
+		static int ms_before = 0;
+		if (m_gps_corr_print) {
+			float diff = utils_point_distance(closest.px, closest.py, pos->px_gps, pos->py_gps) * 100.0;
+
+			commands_printf("Diff: %.1f cm, Speed: %.1f km/h, Yaw: %.1f",
+					(double)diff, (double)(m_pos.speed * 3.6), (double)m_pos.yaw);
+
+			if (sample == 0) {
+				commands_init_plot("Time (s)", "Value");
+				commands_plot_add_graph("Diff (cm)");
+				commands_plot_add_graph("Speed (0.1 * km/h)");
+				commands_plot_add_graph("Yaw (degrees)");
+			}
+
+			sample += pos->gps_ms - ms_before;
+
+			commands_plot_set_graph(0);
+			commands_send_plot_points((float)sample / 1000.0, diff);
+			commands_plot_set_graph(1);
+			commands_send_plot_points((float)sample / 1000.0, m_pos.speed * 3.6 * 10);
+			commands_plot_set_graph(2);
+			commands_send_plot_points((float)sample / 1000.0, m_pos.yaw);
+		} else {
+			sample = 0;
+		}
+		ms_before = pos->gps_ms;
+	}
+
+	utils_step_towards(&closest_corr.px, pos->px_gps, gain);
+	utils_step_towards(&closest_corr.py, pos->py_gps, gain);
+	pos->px += closest_corr.px - closest.px;
+	pos->py += closest_corr.py - closest.py;
+
+	pos->gps_ang_corr_x_last_gps = pos->px_gps;
+	pos->gps_ang_corr_y_last_gps = pos->py_gps;
+	pos->gps_ang_corr_last_gps_ms = pos->gps_ms;
+}
+
+static void init_gps_local(GPS_STATE *gps) {
+	gps->ix = gps->x;
+	gps->iy = gps->y;
+	gps->iz = gps->z;
+
+	float so = sinf((float)gps->lon * M_PI / 180.0);
+	float co = cosf((float)gps->lon * M_PI / 180.0);
+	float sa = sinf((float)gps->lat * M_PI / 180.0);
+	float ca = cosf((float)gps->lat * M_PI / 180.0);
+
+	// ENU
+	gps->r1c1 = -so;
+	gps->r1c2 = co;
+	gps->r1c3 = 0.0;
+
+	gps->r2c1 = -sa * co;
+	gps->r2c2 = -sa * so;
+	gps->r2c3 = ca;
+
+	gps->r3c1 = ca * co;
+	gps->r3c2 = ca * so;
+	gps->r3c3 = sa;
+
+	gps->lx = 0.0;
+	gps->ly = 0.0;
+	gps->lz = 0.0;
 }

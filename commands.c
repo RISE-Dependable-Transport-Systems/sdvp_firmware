@@ -112,21 +112,21 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			buffer_append_float32(m_send_buffer, mag[0], 1e6, &send_index); // 44
 			buffer_append_float32(m_send_buffer, mag[1], 1e6, &send_index); // 48
 			buffer_append_float32(m_send_buffer, mag[2], 1e6, &send_index); // 52
-			buffer_append_float32(m_send_buffer, 0.0, 1e4, &send_index); // 56
-			buffer_append_float32(m_send_buffer, 0.0, 1e4, &send_index); // 60
+			buffer_append_float32(m_send_buffer, pos.px, 1e4, &send_index); // 56
+			buffer_append_float32(m_send_buffer, pos.py, 1e4, &send_index); // 60
 			buffer_append_float32(m_send_buffer, 0.0, 1e6, &send_index); // 64
 			buffer_append_float32(m_send_buffer, 0.0, 1e6, &send_index); // 68
 			buffer_append_float32(m_send_buffer, 0.0, 1e6, &send_index); // 72
 			m_send_buffer[send_index++] = 0; // 73
-			buffer_append_float32(m_send_buffer, 0.0, 1e4, &send_index); // 77
-			buffer_append_float32(m_send_buffer, 0.0, 1e4, &send_index); // 81
+			buffer_append_float32(m_send_buffer, pos.px_gps, 1e4, &send_index); // 77
+			buffer_append_float32(m_send_buffer, pos.px_gps, 1e4, &send_index); // 81
 			buffer_append_float32(m_send_buffer, 0.0, 1e4, &send_index); // 85
 			buffer_append_float32(m_send_buffer, 0.0, 1e4, &send_index); // 89
 			buffer_append_float32(m_send_buffer, 0.0, 1e6, &send_index); // 93
 			buffer_append_int32(m_send_buffer, 0, &send_index); // 97
 			buffer_append_int16(m_send_buffer, 0, &send_index); // 99
-			buffer_append_float32(m_send_buffer, 0.0, 1e4, &send_index); // 103
-			buffer_append_float32(m_send_buffer, 0.0, 1e4, &send_index); // 107
+			buffer_append_float32(m_send_buffer, pos.px, 1e4, &send_index); // 103
+			buffer_append_float32(m_send_buffer, pos.py, 1e4, &send_index); // 107
 
 			commands_send_packet(m_send_buffer, send_index);
 		} break;
@@ -205,3 +205,53 @@ void commands_vprintf(const char* format, va_list args) {
 	}
 }
 
+void commands_send_nmea(const char *data, unsigned int len) {
+	if (main_config.gps_send_nmea) {
+		int32_t send_index = 0;
+		m_send_buffer[send_index++] = main_id;
+		m_send_buffer[send_index++] = CMD_SEND_NMEA_RADIO;
+		memcpy(m_send_buffer + send_index, data, len);
+		send_index += len;
+		commands_send_packet(m_send_buffer, send_index);
+	}
+}
+
+void commands_init_plot(char *namex, char *namey) {
+	int ind = 0;
+	m_send_buffer[ind++] = main_id;
+	m_send_buffer[ind++] = CMD_PLOT_INIT;
+	memcpy(m_send_buffer + ind, namex, strlen(namex));
+	ind += strlen(namex);
+	m_send_buffer[ind++] = '\0';
+	memcpy(m_send_buffer + ind, namey, strlen(namey));
+	ind += strlen(namey);
+	m_send_buffer[ind++] = '\0';
+	commands_send_packet((unsigned char*)m_send_buffer, ind);
+}
+
+void commands_plot_add_graph(char *name) {
+	int ind = 0;
+	m_send_buffer[ind++] = main_id;
+	m_send_buffer[ind++] = CMD_PLOT_ADD_GRAPH;
+	memcpy(m_send_buffer + ind, name, strlen(name));
+	ind += strlen(name);
+	m_send_buffer[ind++] = '\0';
+	commands_send_packet((unsigned char*)m_send_buffer, ind);
+}
+
+void commands_plot_set_graph(int graph) {
+	int ind = 0;
+	m_send_buffer[ind++] = main_id;
+	m_send_buffer[ind++] = CMD_PLOT_SET_GRAPH;
+	m_send_buffer[ind++] = graph;
+	commands_send_packet((unsigned char*)m_send_buffer, ind);
+}
+
+void commands_send_plot_points(float x, float y) {
+	int32_t ind = 0;
+	m_send_buffer[ind++] = main_id;
+	m_send_buffer[ind++] = CMD_PLOT_DATA;
+	buffer_append_float32_auto(m_send_buffer, x, &ind);
+	buffer_append_float32_auto(m_send_buffer, y, &ind);
+	commands_send_packet((unsigned char*)m_send_buffer, ind);
+}
