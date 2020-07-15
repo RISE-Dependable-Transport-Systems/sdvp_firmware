@@ -17,8 +17,12 @@
 
 #include "ch.h"
 #include "hal.h"
+#include "conf_general.h"
 #include "terminal.h"
 #include "commands.h"
+#if MAIN_MODE == MAIN_MODE_CAR
+#include "bldc_interface.h"
+#endif
 #include <string.h>
 #include <stdio.h>
 
@@ -42,9 +46,9 @@ void terminal_process_string(char *str) {
 	int argc = 0;
 	char *argv[kMaxArgs];
 
-//#if MAIN_MODE == MAIN_MODE_CAR
-//	static char buffer[256];
-//#endif
+#if MAIN_MODE == MAIN_MODE_CAR
+	static char buffer[256];
+#endif
 
 	char *p2 = strtok(str, " ");
 	while (p2 && argc < kMaxArgs) {
@@ -87,17 +91,17 @@ void terminal_process_string(char *str) {
 		commands_printf(" ");
 	}
 
-//#if MAIN_MODE == MAIN_MODE_CAR
-//	else if (strcmp(argv[0], "vesc") == 0) {
-//		buffer[0] = '\0';
-//		int ind = 0;
-//		for (int i = 1;i < argc;i++) {
-//			sprintf(buffer + ind, " %s", argv[i]);
-//			ind += strlen(argv[i]) + 1;
-//		}
-//		bldc_interface_terminal_cmd(buffer);
-//	}
-//#endif
+#if MAIN_MODE == MAIN_MODE_CAR
+	else if (strcmp(argv[0], "vesc") == 0) {
+		buffer[0] = '\0';
+		int ind = 0;
+		for (int i = 1;i < argc;i++) {
+			sprintf(buffer + ind, " %s", argv[i]);
+			ind += strlen(argv[i]) + 1;
+		}
+		bldc_interface_terminal_cmd(buffer);
+	}
+#endif
 
 	// The help command
 	else if (strcmp(argv[0], "help") == 0) {

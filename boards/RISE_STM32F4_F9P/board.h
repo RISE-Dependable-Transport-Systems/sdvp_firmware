@@ -444,7 +444,7 @@
                                      PIN_MODE_INPUT(GPIOB_PIN5) |           \
                                      PIN_MODE_ALTERNATE(GPIOB_PIN6) |        \
                                      PIN_MODE_INPUT(GPIOB_PIN7) |           \
-                                     PIN_MODE_INPUT(GPIOB_PIN8) |           \
+                                     PIN_MODE_ALTERNATE(GPIOB_PIN8) |           \
                                      PIN_MODE_ALTERNATE(GPIOB_PIN9) |        \
                                      PIN_MODE_OUTPUT(GPIOB_SDA) |         \
                                      PIN_MODE_OUTPUT(GPIOB_SCL) |          \
@@ -461,7 +461,7 @@
                                      PIN_OTYPE_OPENDRAIN(GPIOB_PIN6) |       \
                                      PIN_OTYPE_PUSHPULL(GPIOB_PIN7) |       \
                                      PIN_OTYPE_PUSHPULL(GPIOB_PIN8) |       \
-                                     PIN_OTYPE_OPENDRAIN(GPIOB_PIN9) |       \
+                                     PIN_OTYPE_PUSHPULL(GPIOB_PIN9) |       \
                                      PIN_OTYPE_OPENDRAIN(GPIOB_SDA) |     \
                                      PIN_OTYPE_OPENDRAIN(GPIOB_SCL) |      \
                                      PIN_OTYPE_PUSHPULL(GPIOB_PIN12) |      \
@@ -492,7 +492,7 @@
                                      PIN_PUPDR_PULLUP(GPIOB_PIN5) |         \
                                      PIN_PUPDR_FLOATING(GPIOB_PIN6) |        \
                                      PIN_PUPDR_PULLUP(GPIOB_PIN7) |         \
-                                     PIN_PUPDR_PULLUP(GPIOB_PIN8) |         \
+                                     PIN_PUPDR_FLOATING(GPIOB_PIN8) |         \
                                      PIN_PUPDR_FLOATING(GPIOB_PIN9) |        \
                                      PIN_PUPDR_FLOATING(GPIOB_SDA) |       \
                                      PIN_PUPDR_FLOATING(GPIOB_SCL) |        \
@@ -524,8 +524,8 @@
                                      PIN_AFIO_AF(GPIOB_PIN5, 0U) |          \
                                      PIN_AFIO_AF(GPIOB_PIN6, 4U) |           \
                                      PIN_AFIO_AF(GPIOB_PIN7, 0U))
-#define VAL_GPIOB_AFRH              (PIN_AFIO_AF(GPIOB_PIN8, 0U) |          \
-                                     PIN_AFIO_AF(GPIOB_PIN9, 4U) |           \
+#define VAL_GPIOB_AFRH              (PIN_AFIO_AF(GPIOB_PIN8, 9U) |          \
+                                     PIN_AFIO_AF(GPIOB_PIN9, 9U) |           \
                                      PIN_AFIO_AF(GPIOB_SDA, 0U) |        \
                                      PIN_AFIO_AF(GPIOB_SCL, 0U) |         \
                                      PIN_AFIO_AF(GPIOB_PIN12, 0U) |         \

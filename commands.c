@@ -3,7 +3,11 @@
 #include "buffer.h"
 #include "conf_general.h"
 #include "datatypes.h"
+#include "utils.h"
 #include "terminal.h"
+#include "servo_pwm.h"
+#include "bldc_interface.h"
+#include "comm_can.h"
 #include "pos.h"
 #include <stdint.h>
 #include <stdarg.h>
@@ -125,6 +129,49 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			buffer_append_float32(m_send_buffer, 0.0, 1e4, &send_index); // 107
 
 			commands_send_packet(m_send_buffer, send_index);
+		} break;
+
+		case CMD_RC_CONTROL: {
+			RC_MODE mode;
+			float throttle, steering;
+			int32_t ind = 0;
+			mode = data[ind++];
+			throttle = buffer_get_float32(data, 1e4, &ind);
+			steering = buffer_get_float32(data, 1e6, &ind);
+
+			utils_truncate_number(&steering, -1.0, 1.0);
+			//steering *= autopilot_get_steering_scale();
+
+			//autopilot_set_active(false);
+
+			switch (mode) {
+			case RC_MODE_CURRENT:
+				if (!main_config.car.disable_motor) {
+					comm_can_set_vesc_id(VESC_ID);
+					bldc_interface_set_current(throttle);
+				}
+				break;
+			case RC_MODE_DUTY:
+				utils_truncate_number(&throttle, -1.0, 1.0);
+				if (!main_config.car.disable_motor) {
+					comm_can_set_vesc_id(VESC_ID);
+					bldc_interface_set_duty_cycle(throttle);
+				}
+				break;
+			default:
+				break;
+			}
+			steering = utils_map(steering, -1.0, 1.0,
+					main_config.car.steering_center + (main_config.car.steering_range / 2.0),
+					main_config.car.steering_center - (main_config.car.steering_range / 2.0));
+			servo_pwm_set(0, steering);
+		} break;
+
+		case CMD_SET_SERVO_DIRECT: {
+			int32_t ind = 0;
+			float steering = buffer_get_float32(data, 1e6, &ind);
+			utils_truncate_number(&steering, 0.0, 1.0);
+			servo_pwm_set(0, steering);
 		} break;
 		default:
 			break;

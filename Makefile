@@ -138,6 +138,8 @@ CSRC = $(ALLCSRC) \
        utils.c \
        terminal.c \
        servo_pwm.c \
+       comm_can.c \
+       bldc_interface.c \
        main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
