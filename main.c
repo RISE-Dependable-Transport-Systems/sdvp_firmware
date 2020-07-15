@@ -28,6 +28,7 @@
 #include "pos.h"
 #include "servo_pwm.h"
 #include "comm_can.h"
+#include "ublox.h"
 
 // see: USB_CDC in ChibiOS testhal
 void usbSerialInit(void) {
@@ -89,10 +90,13 @@ int main(void) {
 
   comm_can_init();
 
-  // Init positioning (pos) and BMI160 IMU
+  // Init positioning (pos), BMI160 IMU and u-blox GNSS (F9P)
   pos_init();
   bmi160_wrapper_init(500);
   bmi160_wrapper_set_read_callback(pos_imu_data_callback);
+  palWriteLine(LINE_LED_RED, 1);
+  ublox_init();
+  palWriteLine(LINE_LED_RED, 0); // u-blox init done
 
   /*
    * main program loop
