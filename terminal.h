@@ -19,8 +19,10 @@
 #define TERMINAL_H_
 
 #include "datatypes.h"
+#include <stdarg.h>
 
 // Functions
+void terminal_set_vprintf(void(*vprintf)(const char* format, va_list args));
 void terminal_process_string(char *str);
 void terminal_register_command_callback(
 		const char* command,

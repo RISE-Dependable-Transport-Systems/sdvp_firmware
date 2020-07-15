@@ -187,16 +187,21 @@ void commands_printf(const char* format, ...) {
 	//chMtxLock(&m_print_gps);
 	va_list arg;
 	va_start (arg, format);
+	commands_vprintf(format, arg);
+	va_end (arg);
+	//chMtxUnlock(&m_print_gps);
+}
+
+void commands_vprintf(const char* format, va_list args) {
 	int len;
 	static char print_buffer[512];
 
 	print_buffer[0] = main_id;
 	print_buffer[1] = CMD_PRINTF;
-	len = vsnprintf(print_buffer + 2, 509, format, arg);
-	va_end (arg);
+	len = vsnprintf(print_buffer + 2, 509, format, args);
 
 	if(len > 0) {
 		commands_send_packet((unsigned char*)print_buffer, (len<509) ? len + 2: 512);
 	}
-	//chMtxUnlock(&m_print_gps);
 }
+

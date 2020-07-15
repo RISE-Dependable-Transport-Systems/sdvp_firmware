@@ -20,6 +20,8 @@
 #include "usbcfg.h"
 #include "comm_serial.h"
 #include "packet.h"
+#include "commands.h"
+#include "terminal.h"
 #include "chprintf.h"
 #include "conf_general.h"
 #include "bmi160_wrapper.h"
@@ -77,6 +79,7 @@ int main(void) {
   }
   palWriteLine(LINE_LED_RED, 0); // USB-Serial connection is set up
   comm_serial_init((BaseSequentialStream *)&PORTAB_SDU1);
+  terminal_set_vprintf(&commands_vprintf);
 
   conf_general_init();
 
