@@ -41,14 +41,11 @@ static void(*m_vprintf)(const char* format, va_list args) = 0;
 static terminal_callback_struct callbacks[CALLBACK_LEN];
 static int callback_write = 0;
 
-// Private functions
-inline static void __printf(const char* format, ...);
-
 void terminal_set_vprintf(void(*vprintf)(const char* format, va_list args)) {
 	m_vprintf = vprintf;
 }
 
-static void __printf(const char* format, ...) {
+void terminal_printf(const char* format, ...) {
 	if (m_vprintf) {
 	    va_list vargs;
 	    va_start(vargs, format);
@@ -73,24 +70,24 @@ void terminal_process_string(char *str) {
 	}
 
 	if (argc == 0) {
-		__printf("No command received\n");
+		terminal_printf("No command received\n");
 		return;
 	}
 
 	if (strcmp(argv[0], "ping") == 0) {
-		__printf("pong\n");
+		terminal_printf("pong\n");
 	} else if (strcmp(argv[0], "mem") == 0) {
 		size_t n, total, largest;
 		n = chHeapStatus(NULL, &total, &largest);
-		__printf("core free memory : %u bytes", chCoreGetStatusX());
-		__printf("heap fragments   : %u", n);
-		__printf("heap free total  : %u bytes", total);
-		__printf("heap free largest: %u bytes", largest);
+		terminal_printf("core free memory : %u bytes", chCoreGetStatusX());
+		terminal_printf("heap fragments   : %u", n);
+		terminal_printf("heap free total  : %u bytes", total);
+		terminal_printf("heap free largest: %u bytes", largest);
 	} else if (strcmp(argv[0], "threads") == 0) {
 		thread_t *tp;
 		static const char *states[] = {CH_STATE_NAMES};
-		__printf("stklimit    stack     addr refs prio     state               name");
-		__printf("-----------------------------------------------------------------");
+		terminal_printf("stklimit    stack     addr refs prio     state               name");
+		terminal_printf("-----------------------------------------------------------------");
 		tp = chRegFirstThread();
 		do {
 #if (CH_DBG_ENABLE_STACK_CHECK == TRUE) || (CH_CFG_USE_DYNAMIC == TRUE)
@@ -98,13 +95,13 @@ void terminal_process_string(char *str) {
 #else
     		uint32_t stklimit = 0U;
 #endif
-			__printf("%08lx %08lx %08lx %4lu %4lu %9s %18s",
+			terminal_printf("%08lx %08lx %08lx %4lu %4lu %9s %18s",
 		             stklimit, (uint32_t)tp->ctx.sp, (uint32_t)tp,
 		             (uint32_t)tp->refs - 1, (uint32_t)tp->prio, states[tp->state],
 		             tp->name == NULL ? "" : tp->name);
 			tp = chRegNextThread(tp);
 		} while (tp != NULL);
-		__printf(" ");
+		terminal_printf(" ");
 	}
 
 #if MAIN_MODE == MAIN_MODE_CAR
@@ -121,39 +118,39 @@ void terminal_process_string(char *str) {
 
 	// The help command
 	else if (strcmp(argv[0], "help") == 0) {
-		__printf("Valid commands are:");
-		__printf("help");
-		__printf("  Show this help");
+		terminal_printf("Valid commands are:");
+		terminal_printf("help");
+		terminal_printf("  Show this help");
 
-		__printf("ping");
-		__printf("  Print pong here to see if the reply works");
+		terminal_printf("ping");
+		terminal_printf("  Print pong here to see if the reply works");
 
-		__printf("mem");
-		__printf("  Show memory usage");
+		terminal_printf("mem");
+		terminal_printf("  Show memory usage");
 
-		__printf("threads");
-		__printf("  List all threads");
+		terminal_printf("threads");
+		terminal_printf("  List all threads");
 
 #if MAIN_MODE == MAIN_MODE_CAR
-		__printf("vesc");
-		__printf("  Forward command to VESC");
+		terminal_printf("vesc");
+		terminal_printf("  Forward command to VESC");
 #endif
 
 		for (int i = 0;i < callback_write;i++) {
 			if (callbacks[i].arg_names) {
-				__printf("%s %s", callbacks[i].command, callbacks[i].arg_names);
+				terminal_printf("%s %s", callbacks[i].command, callbacks[i].arg_names);
 			} else {
-				__printf(callbacks[i].command);
+				terminal_printf(callbacks[i].command);
 			}
 
 			if (callbacks[i].help) {
-				__printf("  %s", callbacks[i].help);
+				terminal_printf("  %s", callbacks[i].help);
 			} else {
-				__printf("  There is no help available for this command.");
+				terminal_printf("  There is no help available for this command.");
 			}
 		}
 
-		__printf(" ");
+		terminal_printf(" ");
 	} else {
 		bool found = false;
 		for (int i = 0;i < callback_write;i++) {
@@ -165,7 +162,7 @@ void terminal_process_string(char *str) {
 		}
 
 		if (!found) {
-			__printf("Invalid command: %s\n"
+			terminal_printf("Invalid command: %s\n"
 					"type help to list all available commands\n", argv[0]);
 		}
 	}

@@ -18,11 +18,12 @@
 #ifndef UBLOX_H_
 #define UBLOX_H_
 
-#include "conf_general.h"
 #include "ch.h"
 #include "hal.h"
+#include "datatypes.h"
 
 void ublox_init(void);
+void ublox_set_nmea_callback(void (*m_nmea_callback)(const char *data));
 void ublox_send(unsigned char *data, unsigned int len);
 void ublox_set_rx_callback_nav_sol(void(*func)(ubx_nav_sol *sol));
 void ublox_set_rx_callback_relposned(void(*func)(ubx_nav_relposned *pos));

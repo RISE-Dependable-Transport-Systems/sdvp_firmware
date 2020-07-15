@@ -23,6 +23,7 @@
 
 // Functions
 void terminal_set_vprintf(void(*vprintf)(const char* format, va_list args));
+void terminal_printf(const char* format, ...);
 void terminal_process_string(char *str);
 void terminal_register_command_callback(
 		const char* command,

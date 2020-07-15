@@ -16,9 +16,7 @@
  */
 
 #include "ublox.h"
-#include "commands.h"
 #include "utils.h"
-#include "pos.h"
 #include "terminal.h"
 
 #include <string.h>
@@ -64,6 +62,7 @@ static bool m_print_next_nav_sat = false;
 static bool m_print_next_mon_ver = false;
 static bool m_print_next_cfg_gnss = false;
 static decoder_state m_decoder_state;
+static void (*m_nmea_callback)(const char *data);
 
 // Private functions
 static void reset_decoder_state(void);
@@ -208,6 +207,7 @@ static UARTConfig uart_cfg_ubx_default = {
 };
 
 void ublox_init(void) {
+
 	palClearLine(LINE_UBX_RESET);
 	chThdSleepMilliseconds(10);
 	palSetLine(LINE_UBX_RESET);
@@ -358,6 +358,10 @@ void ublox_init(void) {
 	ublox_cfg_append_enable_bds(buffer, &ind, true, true, true);
 	ublox_cfg_append_enable_glo(buffer, &ind, true, true, true);
 	ublox_cfg_valset(buffer, ind, true, true, true);
+}
+
+void ublox_set_nmea_callback(void (*nmea_callback)(const char *data)) {
+	m_nmea_callback = nmea_callback;
 }
 
 void ublox_send(unsigned char *data, unsigned int len) {
@@ -975,15 +979,8 @@ static THD_FUNCTION(process_thread, arg) {
 					m_decoder_state.line[m_decoder_state.line_pos] = '\0';
 					m_decoder_state.line_pos = 0;
 
-					// TODO
-//#if MAIN_MODE_IS_VEHICLE
-//					bool found = pos_input_nmea((const char*)m_decoder_state.line);
-//
-//					// Only send the lines that pos decoded
-//					if (found) {
-//						commands_send_nmea(m_decoder_state.line, strlen((char*)m_decoder_state.line));
-//					}
-//#endif
+					if (m_nmea_callback)
+						m_nmea_callback((const char*)m_decoder_state.line);
 				}
 			}
 		}
@@ -1001,36 +998,36 @@ static void ubx_terminal_cmd_poll(int argc, const char **argv) {
 		if (strcmp(argv[1], "UBX_NAV_SOL") == 0) {
 			m_print_next_nav_sol = true;
 			ublox_poll(UBX_CLASS_NAV, UBX_NAV_SOL);
-			commands_printf("OK\n");
+			terminal_printf("OK\n");
 		} else if (strcmp(argv[1], "UBX_NAV_RELPOSNED") == 0) {
 			m_print_next_relposned = true;
 			ublox_poll(UBX_CLASS_NAV, UBX_NAV_RELPOSNED);
-			commands_printf("OK\n");
+			terminal_printf("OK\n");
 		} else if (strcmp(argv[1], "UBX_NAV_SVIN") == 0) {
 			m_print_next_svin = true;
 			ublox_poll(UBX_CLASS_NAV, UBX_NAV_SVIN);
-			commands_printf("OK\n");
+			terminal_printf("OK\n");
 		} else if (strcmp(argv[1], "UBX_RXM_RAWX") == 0) {
 			m_print_next_rawx = true;
 			ublox_poll(UBX_CLASS_RXM, UBX_RXM_RAWX);
-			commands_printf("OK\n");
+			terminal_printf("OK\n");
 		} else if (strcmp(argv[1], "UBX_NAV_SAT") == 0) {
 			m_print_next_nav_sat = true;
 			ublox_poll(UBX_CLASS_NAV, UBX_NAV_SAT);
-			commands_printf("OK\n");
+			terminal_printf("OK\n");
 		} else if (strcmp(argv[1], "UBX_MON_VER") == 0) {
 			m_print_next_mon_ver = true;
 			ublox_poll(UBX_CLASS_MON, UBX_MON_VER);
-			commands_printf("OK\n");
+			terminal_printf("OK\n");
 		} else if (strcmp(argv[1], "UBX_CFG_GNSS") == 0) {
 			m_print_next_cfg_gnss = true;
 			ublox_poll(UBX_CLASS_CFG, UBX_CFG_GNSS);
-			commands_printf("OK\n");
+			terminal_printf("OK\n");
 		} else {
-			commands_printf("Wrong argument %s\n", argv[1]);
+			terminal_printf("Wrong argument %s\n", argv[1]);
 		}
 	} else {
-		commands_printf("Wrong number of arguments\n");
+		terminal_printf("Wrong number of arguments\n");
 	}
 }
 
@@ -1214,7 +1211,7 @@ static void ubx_decode_nav_sol(uint8_t *msg, int len) {
 
 	if (m_print_next_nav_sol) {
 		m_print_next_nav_sol = false;
-		commands_printf(
+		terminal_printf(
 				"NAV_SOL RX\n"
 				"num_sv: %d\n"
 				"i_tow: %d ms\n"
@@ -1295,7 +1292,7 @@ static void ubx_decode_relposned(uint8_t *msg, int len) {
 
 	if (m_print_next_relposned) {
 		m_print_next_relposned = false;
-		commands_printf(
+		terminal_printf(
 				"NED RX\n"
 				"i_tow: %d ms\n"
 				"N: %.3f m\n"
@@ -1341,7 +1338,7 @@ static void ubx_decode_svin(uint8_t *msg, int len) {
 
 	if (m_print_next_svin) {
 		m_print_next_svin = false;
-		commands_printf(
+		terminal_printf(
 				"SVIN RX\n"
 				"i_tow: %d ms\n"
 				"dur: %d s\n"
@@ -1410,7 +1407,7 @@ static void ubx_decode_rawx(uint8_t *msg, int len) {
 	ind = 16;
 
 	if (raw.num_meas > 40) {
-		commands_printf("Too many raw measurements to store in buffer: %d\n", raw.num_meas);
+		terminal_printf("Too many raw measurements to store in buffer: %d\n", raw.num_meas);
 		return;
 	}
 
@@ -1441,7 +1438,7 @@ static void ubx_decode_rawx(uint8_t *msg, int len) {
 
 	if (m_print_next_rawx) {
 		m_print_next_rawx = false;
-		commands_printf(
+		terminal_printf(
 				"RAWX RX\n"
 				"tow: %.3f\n"
 				"week: %d\n"
@@ -1526,7 +1523,7 @@ static void ubx_decode_nav_sat(uint8_t *msg, int len) {
 			}
 		}
 
-		commands_printf(
+		terminal_printf(
 				"         Visible   Used\n"
 				"GPS:     %02d        %02d\n"
 				"GLONASS: %02d        %02d\n"
@@ -1574,7 +1571,7 @@ static void ubx_decode_cfg_gnss(uint8_t *msg, int len) {
 	if (m_print_next_cfg_gnss) {
 		m_print_next_cfg_gnss = false;
 
-		commands_printf(
+		terminal_printf(
 				"CFG_GNSS RX\n"
 				"TrkChHw   : %d\n"
 				"TrkChUse  : %d\n"
@@ -1582,7 +1579,7 @@ static void ubx_decode_cfg_gnss(uint8_t *msg, int len) {
 				cfg.num_ch_hw, cfg.num_ch_use, cfg.num_blocks);
 
 		for (int i = 0;i < cfg.num_blocks;i++) {
-			commands_printf(
+			terminal_printf(
 					"GNSS ID: %d, Enabled: %d\n"
 					"MinTrkCh  : %d\n"
 					"MaxTrkCh  : %d\n"
@@ -1600,7 +1597,7 @@ static void ubx_decode_mon_ver(uint8_t *msg, int len) {
 	if (m_print_next_mon_ver) {
 		m_print_next_mon_ver = false;
 
-		commands_printf(
+		terminal_printf(
 				"MON_VER RX:\n"
 				"SW: %s\n"
 				"HW: %s\n"
@@ -1610,11 +1607,11 @@ static void ubx_decode_mon_ver(uint8_t *msg, int len) {
 		int ind = 40;
 
 		while(ind < len) {
-			commands_printf((const char*)msg + ind);
+			terminal_printf((const char*)msg + ind);
 			ind += 30;
 		}
 
-		commands_printf(" ");
+		terminal_printf(" ");
 	}
 }
 

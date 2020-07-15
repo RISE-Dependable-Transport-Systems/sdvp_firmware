@@ -96,6 +96,7 @@ int main(void) {
   bmi160_wrapper_set_read_callback(pos_imu_data_callback);
   palWriteLine(LINE_LED_RED, 1);
   ublox_init();
+  ublox_set_nmea_callback(&pos_input_nmea);
   palWriteLine(LINE_LED_RED, 0); // u-blox init done
 
   /*

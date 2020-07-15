@@ -236,3 +236,120 @@ void pos_get_imu(float *accel, float *gyro, float *mag) {
 		mag[2] = m_mag_raw[2];
 	}
 }
+
+void pos_input_nmea(const char *data) {
+	// TODO
+//	nmea_gga_info_t gga;
+//	static nmea_gsv_info_t gpgsv;
+//	static nmea_gsv_info_t glgsv;
+//	int gga_res = utils_decode_nmea_gga(data, &gga);
+//	int gpgsv_res = utils_decode_nmea_gsv("GP", data, &gpgsv);
+//	int glgsv_res = utils_decode_nmea_gsv("GL", data, &glgsv);
+//
+//	if (gpgsv_res == 1) {
+//		utils_sync_nmea_gsv_info(&m_gpgsv_last, &gpgsv);
+//	}
+//
+//	if (glgsv_res == 1) {
+//		utils_sync_nmea_gsv_info(&m_glgsv_last, &glgsv);
+//	}
+//
+//	if (gga.t_tow >= 0) {
+//		m_nma_last_time = gga.t_tow;
+//
+//#if !(UBLOX_EN && UBLOX_USE_PPS) && !GPS_EXT_PPS
+//		m_ms_today = gga.t_tow;
+//#endif
+//	}
+//
+//	// Only use valid fixes
+//	if (gga.fix_type == 1 || gga.fix_type == 2 || gga.fix_type == 4 || gga.fix_type == 5) {
+//		// Convert llh to ecef
+//		double sinp = sin(gga.lat * D_PI / D(180.0));
+//		double cosp = cos(gga.lat * D_PI / D(180.0));
+//		double sinl = sin(gga.lon * D_PI / D(180.0));
+//		double cosl = cos(gga.lon * D_PI / D(180.0));
+//		double e2 = FE_WGS84 * (D(2.0) - FE_WGS84);
+//		double v = RE_WGS84 / sqrt(D(1.0) - e2 * sinp * sinp);
+//
+//		chMtxLock(&m_mutex_gps);
+//
+//		m_gps.lat = gga.lat;
+//		m_gps.lon = gga.lon;
+//		m_gps.height = gga.height;
+//		m_gps.fix_type = gga.fix_type;
+//		m_gps.sats = gga.n_sat;
+//		m_gps.ms = gga.t_tow;
+//		m_gps.x = (v + gga.height) * cosp * cosl;
+//		m_gps.y = (v + gga.height) * cosp * sinl;
+//		m_gps.z = (v * (D(1.0) - e2) + gga.height) * sinp;
+//
+//		// Continue if ENU frame is initialized
+//		if (m_gps.local_init_done) {
+//			float dx = (float)(m_gps.x - m_gps.ix);
+//			float dy = (float)(m_gps.y - m_gps.iy);
+//			float dz = (float)(m_gps.z - m_gps.iz);
+//
+//			m_gps.lx = m_gps.r1c1 * dx + m_gps.r1c2 * dy + m_gps.r1c3 * dz;
+//			m_gps.ly = m_gps.r2c1 * dx + m_gps.r2c2 * dy + m_gps.r2c3 * dz;
+//			m_gps.lz = m_gps.r3c1 * dx + m_gps.r3c2 * dy + m_gps.r3c3 * dz;
+//
+//			float px = m_gps.lx;
+//			float py = m_gps.ly;
+//
+//			// Apply antenna offset
+//			const float s_yaw = sinf(-m_pos.yaw * M_PI / 180.0);
+//			const float c_yaw = cosf(-m_pos.yaw * M_PI / 180.0);
+//			px -= c_yaw * main_config.gps_ant_x - s_yaw * main_config.gps_ant_y;
+//			py -= s_yaw * main_config.gps_ant_x + c_yaw * main_config.gps_ant_y;
+//
+//			chMtxLock(&m_mutex_pos);
+//
+//			m_pos.px_gps_last = m_pos.px_gps;
+//			m_pos.py_gps_last = m_pos.py_gps;
+//			m_pos.pz_gps_last = m_pos.pz_gps;
+//			m_pos.gps_ms_last = m_pos.gps_ms;
+//
+//			m_pos.px_gps = px;
+//			m_pos.py_gps = py;
+//			m_pos.pz_gps = m_gps.lz;
+//			m_pos.gps_ms = m_gps.ms;
+//			m_pos.gps_fix_type = m_gps.fix_type;
+//
+//			// Correct position
+//			// Optionally require RTK and good ublox quality indication.
+//			if (main_config.gps_comp &&
+//					(!main_config.gps_req_rtk || (gga.fix_type == 4 || gga.fix_type == 5)) &&
+//					(!main_config.gps_use_ubx_info || m_ubx_pos_valid)) {
+//
+//				m_pos.gps_last_corr_diff = sqrtf(SQ(m_pos.px - m_pos.px_gps) +
+//						SQ(m_pos.py - m_pos.py_gps));
+//
+//				correct_pos_gps(&m_pos);
+//				m_pos.gps_corr_time = chVTGetSystemTimeX();
+//
+//#if MAIN_MODE == MAIN_MODE_CAR
+//				m_pos.pz = m_pos.pz_gps - m_pos.gps_ground_level;
+//#elif MAIN_MODE == MAIN_MODE_MULTIROTOR
+//				// Update height from GPS if ultrasound measurements haven't been received for a while
+//				if (ST2MS(chVTTimeElapsedSinceX(m_pos.ultra_update_time)) > 250) {
+//					m_pos.pz = m_pos.pz_gps - m_pos.gps_ground_level;
+//				}
+//#endif
+//			}
+//
+//			m_pos.gps_corr_cnt = 0.0;
+//
+//			chMtxUnlock(&m_mutex_pos);
+//		} else {
+//			init_gps_local(&m_gps);
+//			m_gps.local_init_done = true;
+//		}
+//
+//		m_gps.update_time = chVTGetSystemTimeX();
+//
+//		chMtxUnlock(&m_mutex_gps);
+//	}
+//
+//	return gga_res >= 0;
+}
