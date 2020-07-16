@@ -28,7 +28,9 @@
 #include "pos.h"
 #include "servo_pwm.h"
 #include "comm_can.h"
+#include "bldc_interface.h"
 #include "ublox.h"
+#include "timeout.h"
 
 // see: USB_CDC in ChibiOS testhal
 void usbSerialInit(void) {
@@ -88,6 +90,7 @@ int main(void) {
   servo_pwm_init(0b0001);
   servo_pwm_set(0, 0.5);
 
+  // init CAN communication (incl. VESC/bldc_interface)
   comm_can_init();
 
   // Init positioning (pos), BMI160 IMU and u-blox GNSS (F9P)
@@ -98,6 +101,8 @@ int main(void) {
   ublox_init();
   ublox_set_nmea_callback(&pos_input_nmea);
   palWriteLine(LINE_LED_RED, 0); // u-blox init done
+
+  timeout_init(1000, 40.0); // safety timeout
 
   /*
    * main program loop

@@ -9,6 +9,7 @@
 #include "bldc_interface.h"
 #include "comm_can.h"
 #include "pos.h"
+#include "timeout.h"
 #include <stdint.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -78,6 +79,10 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 		}
 
 		switch (packet_id) {
+		case CMD_HEARTBEAT: {
+			timeout_reset();
+		} break;
+
 		case CMD_TERMINAL_CMD: {
 			commands_set_send_func(func);
 

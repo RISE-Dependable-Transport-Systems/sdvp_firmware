@@ -30,6 +30,7 @@
 #include <string.h>
 
 // Private variables
+static bool m_safety_stop;
 static unsigned char send_buffer[1024];
 
 // Private variables for received data
@@ -70,6 +71,7 @@ static void(*motor_control_set_func)(motor_control_mode mode, float value) = 0;
 static void(*values_requested_func)(void) = 0;
 
 void bldc_interface_init(void(*func)(unsigned char *data, unsigned int len)) {
+	m_safety_stop = false;
 	send_func = func;
 }
 
@@ -87,7 +89,7 @@ void bldc_interface_set_forward_func(void(*func)(unsigned char *data, unsigned i
  * The data length.
  */
 void bldc_interface_send_packet(unsigned char *data, unsigned int len) {
-	if (send_func) {
+	if (send_func && !m_safety_stop) {
 		send_func(data, len);
 	}
 }
@@ -391,6 +393,11 @@ void bldc_interface_set_current_brake(float current) {
 	send_packet_no_fwd(send_buffer, send_index);
 }
 
+void bldc_interface_set_current_safety_brake(float current) {
+	bldc_interface_set_current_brake(current);
+	m_safety_stop = true;
+}
+
 void bldc_interface_set_rpm(int rpm) {
 	if (motor_control_set_func) {
 		motor_control_set_func(MOTOR_CONTROL_RPM, rpm);
@@ -444,6 +451,10 @@ void bldc_interface_get_values(void) {
 	send_packet_no_fwd(send_buffer, send_index);
 }
 
+mc_values bldc_interface_get_last_received_values(void) {
+	return values;
+}
+
 void bldc_interface_get_mcconf(void) {
 	int32_t send_index = 0;
 	send_buffer[send_index++] = COMM_GET_MCCONF;
@@ -475,6 +486,15 @@ void bldc_interface_get_decoded_chuk(void) {
 }
 
 // Other functions
+void bldc_interface_safety_stop(void) {
+	bldc_interface_set_current(0.0);
+	m_safety_stop = true;
+}
+
+void bldc_interface_reset_safety_stop(void) {
+	m_safety_stop = false;
+}
+
 void bldc_interface_detect_motor_param(float current, float min_rpm, float low_duty) {
 	int32_t send_index = 0;
 	send_buffer[send_index++] = COMM_DETECT_MOTOR_PARAM;

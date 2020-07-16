@@ -47,6 +47,7 @@ void bldc_interface_terminal_cmd(char* cmd);
 void bldc_interface_set_duty_cycle(float dutyCycle);
 void bldc_interface_set_current(float current);
 void bldc_interface_set_current_brake(float current);
+void bldc_interface_set_current_safety_brake(float current);
 void bldc_interface_set_rpm(int rpm);
 void bldc_interface_set_pos(float pos);
 void bldc_interface_set_handbrake(float current);
@@ -55,6 +56,7 @@ void bldc_interface_set_servo_pos(float pos);
 // Getters
 void bldc_interface_get_fw_version(void);
 void bldc_interface_get_values(void);
+mc_values bldc_interface_get_last_received_values(void);
 void bldc_interface_get_mcconf(void);
 void bldc_interface_get_appconf(void);
 void bldc_interface_get_decoded_ppm(void);
@@ -62,6 +64,8 @@ void bldc_interface_get_decoded_adc(void);
 void bldc_interface_get_decoded_chuk(void);
 
 // Other functions
+void bldc_interface_safety_stop(void);
+void bldc_interface_reset_safety_stop(void);
 void bldc_interface_detect_motor_param(float current, float min_rpm, float low_duty);
 void bldc_interface_reboot(void);
 void bldc_interface_send_alive(void);

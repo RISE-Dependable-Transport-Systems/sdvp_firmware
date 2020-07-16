@@ -20,6 +20,8 @@
 
 #include "datatypes.h"
 
+#define TIMEOUT_MIN_RPM_BRAKE		200
+
 #define MAIN_MODE_CAR 				0
 #define MAIN_MODE_MULTIROTOR		4
 
@@ -32,8 +34,8 @@
 #define MAIN_MODE_IS_VEHICLE		(MAIN_MODE == MAIN_MODE_CAR || MAIN_MODE == MAIN_MODE_MULTIROTOR)
 
 // Firmware version
-#define FW_VERSION_MAJOR			12
-#define FW_VERSION_MINOR			2
+#define FW_VERSION_MAJOR			20
+#define FW_VERSION_MINOR			0
 
 // General settings
 #define ID_ALL						255
