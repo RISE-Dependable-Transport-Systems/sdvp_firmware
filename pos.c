@@ -277,6 +277,43 @@ void pos_get_imu(float *accel, float *gyro, float *mag) {
 	}
 }
 
+void pos_set_enu_ref(double lat, double lon, double height) {
+	double x, y, z;
+	utils_llh_to_xyz(lat, lon, height, &x, &y, &z);
+
+	chMtxLock(&m_mutex_gps);
+
+	m_gps.ix = x;
+	m_gps.iy = y;
+	m_gps.iz = z;
+
+	float so = sinf((float)lon * M_PI / 180.0);
+	float co = cosf((float)lon * M_PI / 180.0);
+	float sa = sinf((float)lat * M_PI / 180.0);
+	float ca = cosf((float)lat * M_PI / 180.0);
+
+	// ENU
+	m_gps.r1c1 = -so;
+	m_gps.r1c2 = co;
+	m_gps.r1c3 = 0.0;
+
+	m_gps.r2c1 = -sa * co;
+	m_gps.r2c2 = -sa * so;
+	m_gps.r2c3 = ca;
+
+	m_gps.r3c1 = ca * co;
+	m_gps.r3c2 = ca * so;
+	m_gps.r3c3 = sa;
+
+	m_gps.lx = 0.0;
+	m_gps.ly = 0.0;
+	m_gps.lz = 0.0;
+
+	m_gps.local_init_done = true;
+
+	chMtxUnlock(&m_mutex_gps);
+}
+
 void pos_input_nmea(const char *data) {
 	nmea_gga_info_t gga;
 	static nmea_gsv_info_t gpgsv;
@@ -384,6 +421,11 @@ void pos_input_nmea(const char *data) {
 }
 
 static POS_POINT get_closest_point_to_time(int32_t time) {
+	if (m_pos_history_ptr == 0 && ((*(uint32_t*)m_pos_history)) == 0) { // return current position when history is empty
+		POS_POINT tmp = {m_pos.px, m_pos.py, m_pos.py, m_pos.yaw, m_pos.speed, m_ms_today};
+		return tmp;
+	}
+
 	int32_t ind = m_pos_history_ptr > 0 ? m_pos_history_ptr - 1 : POS_HISTORY_LEN - 1;
 	int32_t min_diff = abs(time - m_pos_history[ind].time);
 	int32_t ind_use = ind;
