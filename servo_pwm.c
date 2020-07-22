@@ -61,6 +61,8 @@ static PWMConfig pwmcfg9 = {
 #endif
 };
 
+static float pulse_width_current[4] = {0.0, 0.0, 0.0, 0.0};
+
 void servo_pwm_init(uint8_t servo_enable_mask) {
 	if (servo_enable_mask & (1 << 0))
 		pwmcfg3.channels[2].mode = PWM_OUTPUT_ACTIVE_HIGH;
@@ -111,18 +113,22 @@ void servo_pwm_set(uint8_t channel, float pulse_width) {
 	switch(channel) {
 	case 0:
 		pwmEnableChannel(&PWMD3, 2, cnt_val);
+		pulse_width_current[0] = pulse_width;
 		break;
 
 	case 1:
 		pwmEnableChannel(&PWMD3, 3, cnt_val);
+		pulse_width_current[1] = pulse_width;
 		break;
 
 	case 2:
 		pwmEnableChannel(&PWMD9, 0, cnt_val);
+		pulse_width_current[2] = pulse_width;
 		break;
 
 	case 3:
 		pwmEnableChannel(&PWMD9, 1, cnt_val);
+		pulse_width_current[3] = pulse_width;
 		break;
 
 	case ALL_CHANNELS:
@@ -130,9 +136,20 @@ void servo_pwm_set(uint8_t channel, float pulse_width) {
 		pwmEnableChannel(&PWMD3, 3, cnt_val);
 		pwmEnableChannel(&PWMD9, 0, cnt_val);
 		pwmEnableChannel(&PWMD9, 1, cnt_val);
+		pulse_width_current[0] = pulse_width;
+		pulse_width_current[1] = pulse_width;
+		pulse_width_current[2] = pulse_width;
+		pulse_width_current[3] = pulse_width;
 		break;
 
 	default:
 		break;
 	}
+}
+
+float servo_pwm_get(uint8_t id) {
+	if (id <= 3)
+		return pulse_width_current[id];
+	else
+		return -1.0;
 }

@@ -93,7 +93,9 @@ int main(void) {
   // init CAN communication (incl. VESC/bldc_interface)
   comm_can_init();
 
-  // Init positioning (pos), BMI160 IMU and u-blox GNSS (F9P)
+  // Init positioning (pos), BMI160 IMU and u-blox GNSS (F9P).
+  // Set bldc_interface (Motor Controller) callback
+  // pos input: IMU (500 Hz), GNSS (5 Hz), Motor Controller (50 Hz)
   pos_init();
   bmi160_wrapper_init(500);
   bmi160_wrapper_set_read_callback(pos_imu_data_callback);
@@ -101,6 +103,7 @@ int main(void) {
   ublox_init();
   ublox_set_nmea_callback(&pos_input_nmea);
   palWriteLine(LINE_LED_RED, 0); // u-blox init done
+  bldc_interface_set_rx_value_func(pos_mc_values_received);
 
   timeout_init(1000, 40.0); // safety timeout
 
@@ -108,14 +111,19 @@ int main(void) {
    * main program loop
    */
   while (true) {
-	static int i = 0;
+	static unsigned int i = 0;
 	i++;
 
+	// visual alive signal
 	if (i % 50 == 0)
 		palToggleLine(LINE_LED_GREEN);
 
 	// packet communication timeout
     packet_timerfunc();
+
+    // poll motor controller info every 20 ms -> 50 Hz
+    if (i % 2 == 0)
+    	bldc_interface_get_values();
 
     chThdSleepMilliseconds(10);
   }

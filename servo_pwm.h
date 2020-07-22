@@ -23,6 +23,7 @@
 // Functions
 void servo_pwm_init(uint8_t servo_enable_mask);
 void servo_pwm_set(uint8_t id, float pulse_width);
+float servo_pwm_get(uint8_t id);
 void servo_pwm_set_all(float pulse_width);
 
 #endif /* SERVO_PWM_H_ */

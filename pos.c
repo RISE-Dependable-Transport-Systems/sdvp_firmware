@@ -5,6 +5,7 @@
 #include "commands.h" // TODO might make sense to factor out
 #include "conf_general.h"
 #include "ahrs.h"
+#include "servo_pwm.h" // TODO factor out
 #include <math.h>
 #include <stdlib.h>
 
@@ -37,12 +38,17 @@ static bool m_ubx_pos_valid;
 static int32_t m_nma_last_time;
 static nmea_gsv_info_t m_gpgsv_last;
 static nmea_gsv_info_t m_glgsv_last;
+// Motor controller
+static mc_values m_mc_val;
+
 
 // Private functions
 static void update_orientation_angles(float *accel, float *gyro, float *mag, float dt);
 static void init_gps_local(GPS_STATE *gps);
+static void save_pos_history(void);
 static POS_POINT get_closest_point_to_time(int32_t time);
 static void correct_pos_gps(POS_STATE *pos);
+static void car_update_pos(float distance, float turn_rad_rear, float angle_diff, float speed);
 
 void pos_init(void) {
 	ahrs_init_attitude_info(&m_att);
@@ -420,6 +426,20 @@ void pos_input_nmea(const char *data) {
 		commands_send_nmea(data, strlen(data));
 }
 
+static void save_pos_history(void) {
+	m_pos_history[m_pos_history_ptr].px = m_pos.px;
+	m_pos_history[m_pos_history_ptr].py = m_pos.py;
+	m_pos_history[m_pos_history_ptr].pz = m_pos.pz;
+	m_pos_history[m_pos_history_ptr].yaw = m_pos.yaw;
+	m_pos_history[m_pos_history_ptr].speed = m_pos.speed;
+	m_pos_history[m_pos_history_ptr].time = m_ms_today;
+
+	m_pos_history_ptr++;
+	if (m_pos_history_ptr >= POS_HISTORY_LEN) {
+		m_pos_history_ptr = 0;
+	}
+}
+
 static POS_POINT get_closest_point_to_time(int32_t time) {
 	if (m_pos_history_ptr == 0 && ((*(uint32_t*)m_pos_history)) == 0) { // return current position when history is empty
 		POS_POINT tmp = {m_pos.px, m_pos.py, m_pos.py, m_pos.yaw, m_pos.speed, m_ms_today};
@@ -556,4 +576,80 @@ static void init_gps_local(GPS_STATE *gps) {
 	gps->lx = 0.0;
 	gps->ly = 0.0;
 	gps->lz = 0.0;
+}
+
+void pos_mc_values_received(mc_values *val) {
+	m_mc_val = *val;
+
+	static float last_tacho = 0;
+	static bool tacho_read = false;
+	float tacho = m_mc_val.tachometer;
+	float rpm = m_mc_val.rpm;
+
+	// Reset tacho the first time.
+	if (!tacho_read) {
+		tacho_read = true;
+		last_tacho = tacho;
+	}
+
+	float distance = (tacho - last_tacho) * main_config.car.gear_ratio
+			* (2.0 / main_config.car.motor_poles) * (1.0 / 6.0)
+			* main_config.car.wheel_diam * M_PI;
+	last_tacho = tacho;
+
+	float angle_diff = 0.0;
+	float turn_rad_rear = 0.0;
+
+	float steering_angle = (servo_pwm_get(0) // TODO: generalize
+			- main_config.car.steering_center)
+			* ((2.0 * main_config.car.steering_max_angle_rad)
+					/ main_config.car.steering_range);
+
+	if (fabsf(steering_angle) >= 1e-6) {
+		turn_rad_rear = main_config.car.axis_distance / tanf(steering_angle);
+		float turn_rad_front = sqrtf(
+				main_config.car.axis_distance * main_config.car.axis_distance
+				+ turn_rad_rear * turn_rad_rear);
+
+		if (turn_rad_rear < 0) {
+			turn_rad_front = -turn_rad_front;
+		}
+
+		angle_diff = (distance * 2.0) / (turn_rad_rear + turn_rad_front);
+	}
+
+	float speed = rpm * main_config.car.gear_ratio
+			* (2.0 / main_config.car.motor_poles) * (1.0 / 60.0)
+			* main_config.car.wheel_diam * M_PI;
+
+	car_update_pos(distance, turn_rad_rear, angle_diff, speed);
+}
+
+static void car_update_pos(float distance, float turn_rad_rear, float angle_diff, float speed) {
+	chMtxLock(&m_mutex_pos);
+
+	if (fabsf(distance) > 1e-6) {
+		float angle_rad = -m_pos.yaw * M_PI / 180.0;
+
+		m_pos.gps_corr_cnt += fabsf(distance);
+
+		if (!main_config.car.yaw_use_odometry || fabsf(angle_diff) < 1e-6) {
+			m_pos.px += cosf(angle_rad) * distance;
+			m_pos.py += sinf(angle_rad) * distance;
+		} else {
+			m_pos.px += turn_rad_rear * (sinf(angle_rad + angle_diff) - sinf(angle_rad));
+			m_pos.py += turn_rad_rear * (cosf(angle_rad - angle_diff) - cosf(angle_rad));
+			angle_rad += angle_diff;
+			utils_norm_angle_rad(&angle_rad);
+
+			m_pos.yaw = -angle_rad * 180.0 / M_PI;
+			utils_norm_angle(&m_pos.yaw);
+		}
+	}
+
+	m_pos.speed = speed;
+
+	save_pos_history();
+
+	chMtxUnlock(&m_mutex_pos);
 }
