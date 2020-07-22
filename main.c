@@ -82,6 +82,7 @@ int main(void) {
   }
   palWriteLine(LINE_LED_RED, 0); // USB-Serial connection is set up
   comm_serial_init((BaseSequentialStream *)&PORTAB_SDU1);
+  commands_init();
   terminal_set_vprintf(&commands_vprintf);
 
   conf_general_init();
