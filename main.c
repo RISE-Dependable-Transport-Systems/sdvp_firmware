@@ -24,6 +24,7 @@
 #include "terminal.h"
 #include "chprintf.h"
 #include "conf_general.h"
+#include "time_today.h"
 #include "bmi160_wrapper.h"
 #include "pos.h"
 #include "servo_pwm.h"
@@ -74,7 +75,7 @@ int main(void) {
   // Default values for GPIO
   palWriteLine(LINE_LED_GREEN, 0);
   palWriteLine(LINE_LED_RED, 0);
-  
+
   usbSerialInit();
   while (PORTAB_SDU1.config->usbp->state != USB_ACTIVE) {
       palWriteLine(LINE_LED_RED, 1);
@@ -105,6 +106,10 @@ int main(void) {
   ublox_set_nmea_callback(&pos_input_nmea);
   palWriteLine(LINE_LED_RED, 0); // u-blox init done
   bldc_interface_set_rx_value_func(pos_mc_values_received);
+
+  // u-blox PPS callback for timekeeping
+  palEnableLineEvent(LINE_UBX_PPS, PAL_EVENT_MODE_RISING_EDGE);
+  palSetLineCallback(LINE_UBX_PPS, time_today_pps_cb, NULL);
 
   timeout_init(1000, 40.0); // safety timeout
 

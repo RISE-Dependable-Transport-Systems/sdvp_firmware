@@ -251,6 +251,7 @@
 #define LINE_PDM_OUT                PAL_LINE(GPIOC, 3U)
 #define LINE_UBX_TX                 PAL_LINE(GPIOC, 6U)
 #define LINE_UBX_RX                 PAL_LINE(GPIOC, 7U)
+#define LINE_UBX_PPS                PAL_LINE(GPIOC, 8U)
 #define LINE_UBX_RESET              PAL_LINE(GPIOC, 9U)
 #define LINE_LED_RED                PAL_LINE(GPIOC, 10U)
 #define LINE_LED_GREEN              PAL_LINE(GPIOC, 11U)
@@ -611,7 +612,7 @@
                                      PIN_PUPDR_PULLUP(GPIOC_PIN5) |         \
                                      PIN_PUPDR_PULLUP(GPIOC_PIN6) |         \
                                      PIN_PUPDR_FLOATING(GPIOC_PIN7) |       \
-                                     PIN_PUPDR_PULLUP(GPIOC_PIN8) |         \
+                                     PIN_PUPDR_PULLDOWN(GPIOC_PIN8) |         \
                                      PIN_PUPDR_PULLUP(GPIOC_PIN9) |         \
                                      PIN_PUPDR_PULLUP(GPIOC_LED_RED) |       \
                                      PIN_PUPDR_PULLUP(GPIOC_LED_GREEN) |        \

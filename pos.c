@@ -4,6 +4,7 @@
 #include "utils.h"
 #include "commands.h" // TODO might make sense to factor out
 #include "conf_general.h"
+#include "time_today.h"
 #include "ahrs.h"
 #include "servo_pwm.h" // TODO factor out
 #include <math.h>
@@ -12,7 +13,6 @@
 #define POS_HISTORY_LEN					100
 
 // Private variables
-static int32_t m_ms_today;
 static POS_STATE m_pos;
 static POS_POINT m_pos_history[POS_HISTORY_LEN];
 static int m_pos_history_ptr;
@@ -35,7 +35,6 @@ static bool m_yaw_imu_clamp_set;
 static GPS_STATE m_gps;
 static mutex_t m_mutex_gps;
 static bool m_ubx_pos_valid;
-static int32_t m_nma_last_time;
 static nmea_gsv_info_t m_gpgsv_last;
 static nmea_gsv_info_t m_glgsv_last;
 // Motor controller
@@ -58,7 +57,6 @@ void pos_init(void) {
 	m_imu_yaw_offset = 0.0;
 
 	m_ubx_pos_valid = true;
-	m_nma_last_time = 0;
 	memset(&m_pos_history, 0, sizeof(m_pos_history));
 	m_pos_history_ptr = 0;
 	m_pos_history_print = false;
@@ -72,7 +70,6 @@ void pos_init(void) {
 	m_yaw_imu_clamp = 0.0;
 	m_yaw_imu_clamp_set = false;
 
-	m_ms_today = -1;
 	chMtxObjectInit(&m_mutex_pos);
 	chMtxObjectInit(&m_mutex_gps);
 }
@@ -337,7 +334,7 @@ void pos_input_nmea(const char *data) {
 	}
 
 	if (gga.t_tow >= 0) {
-		m_nma_last_time = gga.t_tow;
+		time_today_set_pps_time_ref(gga.t_tow);
 	}
 
 	// Only use valid fixes
@@ -432,7 +429,7 @@ static void save_pos_history(void) {
 	m_pos_history[m_pos_history_ptr].pz = m_pos.pz;
 	m_pos_history[m_pos_history_ptr].yaw = m_pos.yaw;
 	m_pos_history[m_pos_history_ptr].speed = m_pos.speed;
-	m_pos_history[m_pos_history_ptr].time = m_ms_today;
+	m_pos_history[m_pos_history_ptr].time = time_today_get_ms();
 
 	m_pos_history_ptr++;
 	if (m_pos_history_ptr >= POS_HISTORY_LEN) {
@@ -442,7 +439,7 @@ static void save_pos_history(void) {
 
 static POS_POINT get_closest_point_to_time(int32_t time) {
 	if (m_pos_history_ptr == 0 && ((*(uint32_t*)m_pos_history)) == 0) { // return current position when history is empty
-		POS_POINT tmp = {m_pos.px, m_pos.py, m_pos.py, m_pos.yaw, m_pos.speed, m_ms_today};
+		POS_POINT tmp = {m_pos.px, m_pos.py, m_pos.py, m_pos.yaw, m_pos.speed, time_today_get_ms()};
 		return tmp;
 	}
 
@@ -477,7 +474,7 @@ static void correct_pos_gps(POS_STATE *pos) {
 	{
 		static int sample = 0;
 		if (m_pos_history_print) {
-			int32_t diff = m_ms_today - pos->gps_ms;
+			int32_t diff = time_today_get_ms() - pos->gps_ms;
 			commands_printf("Age: %d ms, PPS_CNT: %d", diff, m_pps_cnt);
 			if (sample == 0) {
 				commands_init_plot("Sample", "Age (ms)");
@@ -507,7 +504,7 @@ static void correct_pos_gps(POS_STATE *pos) {
 	float gain = main_config.gps_corr_gain_stat +
 			main_config.gps_corr_gain_dyn * pos->gps_corr_cnt;
 
-	POS_POINT closest = get_closest_point_to_time(m_en_delay_comp ? pos->gps_ms : m_ms_today);
+	POS_POINT closest = get_closest_point_to_time(m_en_delay_comp ? pos->gps_ms : time_today_get_ms());
 	POS_POINT closest_corr = closest;
 
 	{

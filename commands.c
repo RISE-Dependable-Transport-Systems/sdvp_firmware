@@ -4,6 +4,7 @@
 #include "conf_general.h"
 #include "datatypes.h"
 #include "utils.h"
+#include "time_today.h"
 #include "terminal.h"
 #include "servo_pwm.h"
 #include "bldc_interface.h"
@@ -137,7 +138,7 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			buffer_append_float32(m_send_buffer, 0.0, 1e4, &send_index); // 85
 			buffer_append_float32(m_send_buffer, 0.0, 1e4, &send_index); // 89
 			buffer_append_float32(m_send_buffer, 0.0, 1e6, &send_index); // 93
-			buffer_append_int32(m_send_buffer, 0, &send_index); // 97
+			buffer_append_int32(m_send_buffer, time_today_get_ms(), &send_index); // 97
 			buffer_append_int16(m_send_buffer, 0, &send_index); // 99
 			buffer_append_float32(m_send_buffer, pos.px, 1e4, &send_index); // 103
 			buffer_append_float32(m_send_buffer, pos.py, 1e4, &send_index); // 107
