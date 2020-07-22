@@ -217,7 +217,7 @@ static THD_FUNCTION(cancom_process_thread, arg) {
 						if (stat_tmp->id == id || stat_tmp->id == -1) {
 							ind = 0;
 							stat_tmp->id = id;
-							stat_tmp->rx_time = chVTGetSystemTime();
+							stat_tmp->rx_time = chVTGetSystemTimeX();
 							stat_tmp->rpm = (float)buffer_get_int32(rxmsg.data8, &ind);
 							stat_tmp->current = (float)buffer_get_int16(rxmsg.data8, &ind) / 10.0;
 							stat_tmp->duty = (float)buffer_get_int16(rxmsg.data8, &ind) / 1000.0;

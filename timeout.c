@@ -32,13 +32,13 @@ static THD_FUNCTION(timeout_thread, arg);
 void timeout_init(systime_t timeoutms, float brake_current) {
 	m_timeout_msec = timeoutms;
 	m_timeout_brake_current = brake_current;
-	m_last_update_time = chVTGetSystemTime();
+	m_last_update_time = chVTGetSystemTimeX();
 
 	chThdCreateStatic(timeout_thread_wa, sizeof(timeout_thread_wa), HIGHPRIO, timeout_thread, NULL);
 }
 
 void timeout_reset(void) {
-	m_last_update_time = chVTGetSystemTime();
+	m_last_update_time = chVTGetSystemTimeX();
 }
 
 static THD_FUNCTION(timeout_thread, arg) {
