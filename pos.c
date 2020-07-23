@@ -7,8 +7,10 @@
 #include "time_today.h"
 #include "ahrs.h"
 #include "servo_pwm.h" // TODO factor out
+#include "terminal.h"
 #include <math.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #define POS_HISTORY_LEN					100
 
@@ -18,7 +20,6 @@ static POS_POINT m_pos_history[POS_HISTORY_LEN];
 static int m_pos_history_ptr;
 static ATTITUDE_INFO m_att;
 static mutex_t m_mutex_pos;
-static int32_t m_pps_cnt;
 static bool m_en_delay_comp;
 static bool m_gps_corr_print;
 static bool m_pos_history_print;
@@ -42,6 +43,9 @@ static mc_values m_mc_val;
 
 
 // Private functions
+static void cmd_terminal_delay_info(int argc, const char **argv);
+static void cmd_terminal_gps_corr_info(int argc, const char **argv);
+static void cmd_terminal_delay_comp(int argc, const char **argv);
 static void update_orientation_angles(float *accel, float *gyro, float *mag, float dt);
 static void init_gps_local(GPS_STATE *gps);
 static void save_pos_history(void);
@@ -61,7 +65,6 @@ void pos_init(void) {
 	m_pos_history_print = false;
 	m_gps_corr_print = false;
 	m_en_delay_comp = true;
-	m_pps_cnt = 0;
 	m_imu_yaw_offset = 0.0;
 	memset(&m_gpgsv_last, 0, sizeof(m_gpgsv_last));
 	memset(&m_glgsv_last, 0, sizeof(m_glgsv_last));
@@ -72,6 +75,30 @@ void pos_init(void) {
 
 	chMtxObjectInit(&m_mutex_pos);
 	chMtxObjectInit(&m_mutex_gps);
+
+	terminal_register_command_callback(
+			"pos_delay_info",
+			"Print and plot delay information when doing GNSS position correction.\n"
+			"  0 - Disabled\n"
+			"  1 - Enabled",
+			"[print_en]",
+			cmd_terminal_delay_info);
+
+	terminal_register_command_callback(
+			"pos_gnss_corr_info",
+			"Print and plot correction information when doing GNSS position correction.\n"
+			"  0 - Disabled\n"
+			"  1 - Enabled",
+			"[print_en]",
+			cmd_terminal_gps_corr_info);
+
+	terminal_register_command_callback(
+			"pos_delay_comp",
+			"Enable or disable delay compensation.\n"
+			"  0 - Disabled\n"
+			"  1 - Enabled",
+			"[enabled]",
+			cmd_terminal_delay_comp);
 }
 
 void pos_get_imu(float *accel, float *gyro, float *mag) {
@@ -241,6 +268,54 @@ void pos_input_nmea(const char *data) {
 
 	if (gga_res >= 0) // forward NMEA if decoded
 		commands_send_nmea(data, strlen(data));
+}
+
+static void cmd_terminal_delay_info(int argc, const char **argv) {
+	if (argc == 2) {
+		if (strcmp(argv[1], "0") == 0) {
+			m_pos_history_print = 0;
+			terminal_printf("OK\n");
+		} else if (strcmp(argv[1], "1") == 0) {
+			m_pos_history_print = 1;
+			terminal_printf("OK\n");
+		} else {
+			terminal_printf("Invalid argument %s\n", argv[1]);
+		}
+	} else {
+		terminal_printf("Wrong number of arguments\n");
+	}
+}
+
+static void cmd_terminal_gps_corr_info(int argc, const char **argv) {
+	if (argc == 2) {
+		if (strcmp(argv[1], "0") == 0) {
+			m_gps_corr_print = 0;
+			terminal_printf("OK\n");
+		} else if (strcmp(argv[1], "1") == 0) {
+			m_gps_corr_print = 1;
+			terminal_printf("OK\n");
+		} else {
+			terminal_printf("Invalid argument %s\n", argv[1]);
+		}
+	} else {
+		terminal_printf("Wrong number of arguments\n");
+	}
+}
+
+static void cmd_terminal_delay_comp(int argc, const char **argv) {
+	if (argc == 2) {
+		if (strcmp(argv[1], "0") == 0) {
+			m_en_delay_comp = 0;
+			terminal_printf("OK\n");
+		} else if (strcmp(argv[1], "1") == 0) {
+			m_en_delay_comp = 1;
+			terminal_printf("OK\n");
+		} else {
+			terminal_printf("Invalid argument %s\n", argv[1]);
+		}
+	} else {
+		terminal_printf("Wrong number of arguments\n");
+	}
 }
 
 void pos_imu_data_callback(float *accel, float *gyro, float *mag) {
@@ -503,7 +578,7 @@ static void correct_pos_gps(POS_STATE *pos) {
 		static int sample = 0;
 		if (m_pos_history_print) {
 			int32_t diff = time_today_get_ms() - pos->gps_ms;
-			commands_printf("Age: %d ms, PPS_CNT: %d", diff, m_pps_cnt);
+			terminal_printf("Age: %d ms, PPS_CNT: %d", diff, time_today_get_pps_cnt());
 			if (sample == 0) {
 				commands_init_plot("Sample", "Age (ms)");
 				commands_plot_add_graph("Delay");
@@ -541,7 +616,7 @@ static void correct_pos_gps(POS_STATE *pos) {
 		if (m_gps_corr_print) {
 			float diff = utils_point_distance(closest.px, closest.py, pos->px_gps, pos->py_gps) * 100.0;
 
-			commands_printf("Diff: %.1f cm, Speed: %.1f km/h, Yaw: %.1f",
+			terminal_printf("Diff: %.1f cm, Speed: %.1f km/h, Yaw: %.1f",
 					(double)diff, (double)(m_pos.speed * 3.6), (double)m_pos.yaw);
 
 			if (sample == 0) {

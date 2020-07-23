@@ -13,6 +13,7 @@
 static int32_t m_ms_today = -1;
 static systime_t last_update = -1;
 static int32_t m_pps_time_ref = -1;
+static int32_t m_pps_cnt = 0;
 
 void time_today_set_ms(int32_t ms_today) {
 	m_ms_today = ms_today;
@@ -58,4 +59,9 @@ void time_today_pps_cb(void *arg) {
 
 	last_time_ref = m_pps_time_ref;
 	last_update = chVTGetSystemTimeX();
+	m_pps_cnt++;
+}
+
+int32_t time_today_get_pps_cnt(void) {
+	return m_pps_cnt;
 }
