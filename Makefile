@@ -144,6 +144,7 @@ CSRC = $(ALLCSRC) \
        timeout.c \
        rtcm3_simple.c \
        time_today.c \
+       autopilot.c \
        main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global

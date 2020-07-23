@@ -13,6 +13,7 @@
 #include "timeout.h"
 #include "rtcm3_simple.h"
 #include "ublox.h"
+#include "autopilot.h"
 #include <stdint.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -156,6 +157,146 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			buffer_append_double64(m_send_buffer, llh[0], D(1e16), &send_index);
 			buffer_append_double64(m_send_buffer, llh[1], D(1e16), &send_index);
 			buffer_append_float32(m_send_buffer, llh[2], 1e3, &send_index);
+			commands_send_packet(m_send_buffer, send_index);
+		} break;
+
+		case CMD_AP_ADD_POINTS: {
+			commands_set_send_func(func);
+
+			int32_t ind = 0;
+			bool first = true;
+
+			while (ind < (int32_t)len) {
+				ROUTE_POINT p;
+				p.px = buffer_get_float32(data, 1e4, &ind);
+				p.py = buffer_get_float32(data, 1e4, &ind);
+				p.pz = buffer_get_float32(data, 1e4, &ind);
+				p.speed = buffer_get_float32(data, 1e6, &ind);
+				p.time = buffer_get_int32(data, &ind);
+				p.attributes = buffer_get_uint32(data, &ind);
+				bool res = autopilot_add_point(&p, first);
+				first = false;
+
+				if (!res) {
+					break;
+				}
+			}
+
+			// Send ack
+			int32_t send_index = 0;
+			m_send_buffer[send_index++] = id_ret;
+			m_send_buffer[send_index++] = packet_id;
+			commands_send_packet(m_send_buffer, send_index);
+		} break;
+
+		case CMD_AP_REMOVE_LAST_POINT: {
+			commands_set_send_func(func);
+
+			autopilot_remove_last_point();
+
+			// Send ack
+			int32_t send_index = 0;
+			m_send_buffer[send_index++] = id_ret;
+			m_send_buffer[send_index++] = packet_id;
+			commands_send_packet(m_send_buffer, send_index);
+		} break;
+
+		case CMD_AP_CLEAR_POINTS: {
+			commands_set_send_func(func);
+
+			autopilot_clear_route();
+
+			// Send ack
+			int32_t send_index = 0;
+			m_send_buffer[send_index++] = id_ret;
+			m_send_buffer[send_index++] = packet_id;
+			commands_send_packet(m_send_buffer, send_index);
+		} break;
+
+		case CMD_AP_GET_ROUTE_PART: {
+			int32_t ind = 0;
+			int first = buffer_get_int32(data, &ind);
+			int num = data[ind++];
+
+			if (num > 20) {
+				break;
+			}
+
+			int32_t send_index = 0;
+			m_send_buffer[send_index++] = id_ret;
+			m_send_buffer[send_index++] = CMD_AP_GET_ROUTE_PART;
+
+			int route_len = autopilot_get_route_len();
+			buffer_append_int32(m_send_buffer, route_len, &send_index);
+
+			for (int i = first;i < (first + num);i++) {
+				ROUTE_POINT rp = autopilot_get_route_point(i);
+				buffer_append_float32_auto(m_send_buffer, rp.px, &send_index);
+				buffer_append_float32_auto(m_send_buffer, rp.py, &send_index);
+				buffer_append_float32_auto(m_send_buffer, rp.pz, &send_index);
+				buffer_append_float32_auto(m_send_buffer, rp.speed, &send_index);
+				buffer_append_int32(m_send_buffer, rp.time, &send_index);
+				buffer_append_uint32(m_send_buffer, rp.attributes, &send_index);
+			}
+
+			commands_send_packet(m_send_buffer, send_index);
+		} break;
+
+		case CMD_AP_SET_ACTIVE: {
+			commands_set_send_func(func);
+
+			autopilot_set_active(data[0]);
+
+			// Send ack
+			int32_t send_index = 0;
+			m_send_buffer[send_index++] = id_ret;
+			m_send_buffer[send_index++] = packet_id;
+			commands_send_packet(m_send_buffer, send_index);
+		} break;
+
+		case CMD_AP_REPLACE_ROUTE: {
+			commands_set_send_func(func);
+
+			int32_t ind = 0;
+			int first = true;
+
+			while (ind < (int32_t)len) {
+				ROUTE_POINT p;
+				p.px = buffer_get_float32(data, 1e4, &ind);
+				p.py = buffer_get_float32(data, 1e4, &ind);
+				p.pz = buffer_get_float32(data, 1e4, &ind);
+				p.speed = buffer_get_float32(data, 1e6, &ind);
+				p.time = buffer_get_int32(data, &ind);
+				p.attributes = buffer_get_uint32(data, &ind);
+
+				if (first) {
+					first = !autopilot_replace_route(&p);
+				} else {
+					autopilot_add_point(&p, false);
+				}
+			}
+
+			// Send ack
+			int32_t send_index = 0;
+			m_send_buffer[send_index++] = id_ret;
+			m_send_buffer[send_index++] = packet_id;
+			commands_send_packet(m_send_buffer, send_index);
+		} break;
+
+		case CMD_AP_SYNC_POINT: {
+			commands_set_send_func(func);
+
+			int32_t ind = 0;
+			int32_t point = buffer_get_int32(data, &ind);
+			int32_t time = buffer_get_int32(data, &ind);
+			int32_t min_diff = buffer_get_int32(data, &ind);
+
+			autopilot_sync_point(point, time, min_diff);
+
+			// Send ack
+			int32_t send_index = 0;
+			m_send_buffer[send_index++] = id_ret;
+			m_send_buffer[send_index++] = packet_id;
 			commands_send_packet(m_send_buffer, send_index);
 		} break;
 
@@ -464,11 +605,13 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			float gyro[3];
 			float mag[3];
 			const mc_values mcval = bldc_interface_get_last_received_values();
+			ROUTE_POINT rp_goal;
 
 			commands_set_send_func(func);
 
 			pos_get_pos(&pos);
 			pos_get_imu(accel, gyro, mag);
+			autopilot_get_goal_now(&rp_goal);
 
 			int32_t send_index = 0;
 			m_send_buffer[send_index++] = id_ret; // 1
@@ -495,11 +638,11 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			m_send_buffer[send_index++] = mcval.fault_code; // 73
 			buffer_append_float32(m_send_buffer, pos.px_gps, 1e4, &send_index); // 77
 			buffer_append_float32(m_send_buffer, pos.py_gps, 1e4, &send_index); // 81
-			buffer_append_float32(m_send_buffer, 0.0, 1e4, &send_index); // 85
-			buffer_append_float32(m_send_buffer, 0.0, 1e4, &send_index); // 89
-			buffer_append_float32(m_send_buffer, 0.0, 1e6, &send_index); // 93
+			buffer_append_float32(m_send_buffer, rp_goal.px, 1e4, &send_index); // 85
+			buffer_append_float32(m_send_buffer, rp_goal.py, 1e4, &send_index); // 89
+			buffer_append_float32(m_send_buffer, autopilot_get_rad_now(), 1e6, &send_index); // 93
 			buffer_append_int32(m_send_buffer, time_today_get_ms(), &send_index); // 97
-			buffer_append_int16(m_send_buffer, 0, &send_index); // 99
+			buffer_append_int16(m_send_buffer, autopilot_get_route_left(), &send_index); // 99
 			buffer_append_float32(m_send_buffer, pos.px, 1e4, &send_index); // 103
 			buffer_append_float32(m_send_buffer, pos.py, 1e4, &send_index); // 107
 

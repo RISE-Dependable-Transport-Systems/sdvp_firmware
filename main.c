@@ -32,6 +32,7 @@
 #include "bldc_interface.h"
 #include "ublox.h"
 #include "timeout.h"
+#include "autopilot.h"
 
 // see: USB_CDC in ChibiOS testhal
 void usbSerialInit(void) {
@@ -110,6 +111,8 @@ int main(void) {
   // u-blox PPS callback for timekeeping
   palEnableLineEvent(LINE_UBX_PPS, PAL_EVENT_MODE_RISING_EDGE);
   palSetLineCallback(LINE_UBX_PPS, time_today_pps_cb, NULL);
+
+  autopilot_init();
 
   timeout_init(1000, 40.0); // safety timeout
 

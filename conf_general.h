@@ -46,8 +46,11 @@
 
 // Car parameters
 #ifndef BOARD_YAW_ROT
-#define BOARD_YAW_ROT				-90.0
+#define BOARD_YAW_ROT				180.0
 #endif
+
+// Autopilot settings
+#define AP_ROUTE_SIZE				1024
 
 // Global variables
 extern MAIN_CONFIG main_config;
