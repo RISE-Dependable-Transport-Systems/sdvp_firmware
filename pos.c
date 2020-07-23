@@ -99,6 +99,18 @@ void pos_init(void) {
 			"  1 - Enabled",
 			"[enabled]",
 			cmd_terminal_delay_comp);
+
+	terminal_register_command_callback(
+			"pos_reset_enu",
+			"Re-initialize the ENU reference on the next GNSS sample",
+			NULL,
+			cmd_terminal_reset_enu_ref);
+
+	terminal_register_command_callback(
+			"pos_reset_att",
+			"Re-initialize the attitude estimation",
+			NULL,
+			cmd_terminal_reset_attitude);
 }
 
 void pos_get_imu(float *accel, float *gyro, float *mag) {
@@ -124,6 +136,42 @@ void pos_get_imu(float *accel, float *gyro, float *mag) {
 void pos_get_pos(POS_STATE *p) {
 	chMtxLock(&m_mutex_pos);
 	*p = m_pos;
+	chMtxUnlock(&m_mutex_pos);
+}
+
+void pos_get_gps(GPS_STATE *p) {
+	chMtxLock(&m_mutex_gps);
+	*p = m_gps;
+	chMtxUnlock(&m_mutex_gps);
+}
+
+float pos_get_speed(void) {
+	return m_pos.speed;
+}
+
+void pos_set_xya(float x, float y, float angle) {
+	chMtxLock(&m_mutex_pos);
+	chMtxLock(&m_mutex_gps);
+
+	m_pos.px = x;
+	m_pos.py = y;
+	m_pos.yaw = angle;
+	m_imu_yaw_offset = m_pos.yaw_imu - angle;
+	m_yaw_imu_clamp = angle;
+
+	chMtxUnlock(&m_mutex_gps);
+	chMtxUnlock(&m_mutex_pos);
+}
+
+void pos_set_yaw_offset(float angle) {
+	chMtxLock(&m_mutex_pos);
+
+	m_imu_yaw_offset = angle;
+	utils_norm_angle(&m_imu_yaw_offset);
+	m_pos.yaw = m_pos.yaw_imu - m_imu_yaw_offset;
+	utils_norm_angle(&m_pos.yaw);
+	m_yaw_imu_clamp = m_pos.yaw;
+
 	chMtxUnlock(&m_mutex_pos);
 }
 
@@ -162,6 +210,19 @@ void pos_set_enu_ref(double lat, double lon, double height) {
 	m_gps.local_init_done = true;
 
 	chMtxUnlock(&m_mutex_gps);
+}
+
+void pos_get_enu_ref(double *llh) {
+	chMtxLock(&m_mutex_gps);
+	utils_xyz_to_llh(m_gps.ix, m_gps.iy, m_gps.iz, &llh[0], &llh[1], &llh[2]);
+	chMtxUnlock(&m_mutex_gps);
+}
+
+void cmd_terminal_reset_enu_ref(int argc, const char **argv) {
+	(void)argc;
+	(void)argv;
+	m_gps.local_init_done = false;
+	terminal_printf("OK");
 }
 
 void pos_input_nmea(const char *data) {
@@ -268,6 +329,13 @@ void pos_input_nmea(const char *data) {
 
 	if (gga_res >= 0) // forward NMEA if decoded
 		commands_send_nmea(data, strlen(data));
+}
+
+void cmd_terminal_reset_attitude(int argc, const char **argv) {
+	(void)argc;
+	(void)argv;
+	m_attitude_init_done = false;
+	terminal_printf("OK");
 }
 
 static void cmd_terminal_delay_info(int argc, const char **argv) {

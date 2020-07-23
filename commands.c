@@ -107,6 +107,25 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			terminal_process_string((char*)data);
 		} break;
 
+		case CMD_SET_POS:
+		case CMD_SET_POS_ACK: {
+			float x, y, angle;
+			int32_t ind = 0;
+			x = buffer_get_float32(data, 1e4, &ind);
+			y = buffer_get_float32(data, 1e4, &ind);
+			angle = buffer_get_float32(data, 1e6, &ind);
+			pos_set_xya(x, y, angle);
+
+			if (packet_id == CMD_SET_POS_ACK) {
+				commands_set_send_func(func);
+				// Send ack
+				int32_t send_index = 0;
+				m_send_buffer[send_index++] = id_ret;
+				m_send_buffer[send_index++] = packet_id;
+				commands_send_packet(m_send_buffer, send_index);
+			}
+		} break;
+
 		case CMD_SET_ENU_REF: {
 			commands_set_send_func(func);
 
@@ -124,9 +143,42 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			commands_send_packet(m_send_buffer, send_index);
 		} break;
 
+		case CMD_GET_ENU_REF: {
+			timeout_reset();
+			commands_set_send_func(func);
+
+			double llh[3];
+			pos_get_enu_ref(llh);
+
+			int32_t send_index = 0;
+			m_send_buffer[send_index++] = id_ret;
+			m_send_buffer[send_index++] = CMD_GET_ENU_REF;
+			buffer_append_double64(m_send_buffer, llh[0], D(1e16), &send_index);
+			buffer_append_double64(m_send_buffer, llh[1], D(1e16), &send_index);
+			buffer_append_float32(m_send_buffer, llh[2], 1e3, &send_index);
+			commands_send_packet(m_send_buffer, send_index);
+		} break;
+
 		case CMD_SEND_RTCM_USB: {
 			for (unsigned int i = 0;i < len;i++) {
 				rtcm3_input_data(data[i], &m_rtcm_state);
+			}
+		} break;
+
+		case CMD_SET_YAW_OFFSET:
+		case CMD_SET_YAW_OFFSET_ACK: {
+			float angle;
+			int32_t ind = 0;
+			angle = buffer_get_float32(data, 1e6, &ind);
+			pos_set_yaw_offset(angle);
+
+			if (packet_id == CMD_SET_YAW_OFFSET_ACK) {
+				commands_set_send_func(func);
+				// Send ack
+				int32_t send_index = 0;
+				m_send_buffer[send_index++] = id_ret;
+				m_send_buffer[send_index++] = packet_id;
+				commands_send_packet(m_send_buffer, send_index);
 			}
 		} break;
 
@@ -411,6 +463,7 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			float accel[3];
 			float gyro[3];
 			float mag[3];
+			const mc_values mcval = bldc_interface_get_last_received_values();
 
 			commands_set_send_func(func);
 
@@ -436,12 +489,12 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			buffer_append_float32(m_send_buffer, mag[2], 1e6, &send_index); // 52
 			buffer_append_float32(m_send_buffer, pos.px, 1e4, &send_index); // 56
 			buffer_append_float32(m_send_buffer, pos.py, 1e4, &send_index); // 60
-			buffer_append_float32(m_send_buffer, 0.0, 1e6, &send_index); // 64
-			buffer_append_float32(m_send_buffer, 0.0, 1e6, &send_index); // 68
-			buffer_append_float32(m_send_buffer, 0.0, 1e6, &send_index); // 72
-			m_send_buffer[send_index++] = 0; // 73
+			buffer_append_float32(m_send_buffer, pos.speed, 1e6, &send_index); // 64
+			buffer_append_float32(m_send_buffer, mcval.v_in, 1e6, &send_index); // 68
+			buffer_append_float32(m_send_buffer, mcval.temp_mos, 1e6, &send_index); // 72
+			m_send_buffer[send_index++] = mcval.fault_code; // 73
 			buffer_append_float32(m_send_buffer, pos.px_gps, 1e4, &send_index); // 77
-			buffer_append_float32(m_send_buffer, pos.px_gps, 1e4, &send_index); // 81
+			buffer_append_float32(m_send_buffer, pos.py_gps, 1e4, &send_index); // 81
 			buffer_append_float32(m_send_buffer, 0.0, 1e4, &send_index); // 85
 			buffer_append_float32(m_send_buffer, 0.0, 1e4, &send_index); // 89
 			buffer_append_float32(m_send_buffer, 0.0, 1e6, &send_index); // 93
