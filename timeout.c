@@ -16,22 +16,21 @@
  */
 
 #include "timeout.h"
-#include "comm_can.h"
-#include "bldc_interface.h"
-#include "conf_general.h"
 
 // Private variables
-static volatile systime_t m_timeout_msec;
-static volatile systime_t m_last_update_time;
-static volatile float m_timeout_brake_current;
+static systime_t m_timeout_msec;
+static systime_t m_last_update_time;
+static void (*m_timeout_action_cb)(void);
+static void (*m_timeout_reset_cb)(void);
 
 // Threads
 static THD_WORKING_AREA(timeout_thread_wa, 512);
 static THD_FUNCTION(timeout_thread, arg);
 
-void timeout_init(systime_t timeoutms, float brake_current) {
+void timeout_init(systime_t timeoutms, void (*timeout_action_cb)(void), void (*timeout_reset_cb)(void)) {
 	m_timeout_msec = timeoutms;
-	m_timeout_brake_current = brake_current;
+	m_timeout_action_cb = timeout_action_cb;
+	m_timeout_reset_cb = timeout_reset_cb;
 	m_last_update_time = chVTGetSystemTimeX();
 
 	chThdCreateStatic(timeout_thread_wa, sizeof(timeout_thread_wa), HIGHPRIO, timeout_thread, NULL);
@@ -47,17 +46,10 @@ static THD_FUNCTION(timeout_thread, arg) {
 	chRegSetThreadName("Timeout");
 
 	for(;;) {
-		if (m_timeout_msec != 0 && chVTTimeElapsedSinceX(m_last_update_time) > TIME_MS2I(m_timeout_msec)) {
-#if MAIN_MODE == MAIN_MODE_CAR
-			comm_can_set_vesc_id(ID_ALL);
-			if (!main_config.car.disable_motor && bldc_interface_get_last_received_values().rpm > TIMEOUT_MIN_RPM_BRAKE)
-				bldc_interface_set_current_safety_brake(m_timeout_brake_current);
-			else
-				bldc_interface_safety_stop();
-		} else {
-			bldc_interface_reset_safety_stop();
-#endif
-		}
+		if (m_timeout_msec != 0 && chVTTimeElapsedSinceX(m_last_update_time) > TIME_MS2I(m_timeout_msec))
+			m_timeout_action_cb();
+		else
+			m_timeout_reset_cb();
 
 		chThdSleepMilliseconds(100);
 	}

@@ -35,7 +35,7 @@
 #include "autopilot.h"
 
 // see: USB_CDC in ChibiOS testhal
-void usbSerialInit(void) {
+static void usbSerialInit(void) {
   /*
    * Initializes a serial-over-USB CDC driver.
    */
@@ -51,6 +51,26 @@ void usbSerialInit(void) {
   chThdSleepMilliseconds(1500);
   usbStart(serusbcfg.usbp, &usbcfg);
   usbConnectBus(serusbcfg.usbp);
+}
+
+static void timeout_stop_cb(void) {
+  palWriteLine(LINE_LED_RED, 1);
+
+  // stop bldc_interface, brake if in motion
+  comm_can_set_vesc_id(ID_ALL);
+  if (!main_config.car.disable_motor && bldc_interface_get_last_received_values().rpm > TIMEOUT_MIN_RPM_BRAKE)
+    bldc_interface_set_current_safety_brake(40.0);
+  else
+    bldc_interface_safety_stop();
+
+  // set servo_pwm to safe value
+  servo_pwm_safety_stop();
+}
+
+static void timeout_reset_cb(void) {
+  palWriteLine(LINE_LED_RED, 0);
+  bldc_interface_reset_safety_stop();
+  servo_pwm_reset_safety_stop();
 }
 
 /*
@@ -89,8 +109,8 @@ int main(void) {
 
   conf_general_init();
 
-  // car: init single servo (SERVO0), set to center
-  servo_pwm_init(0b0001);
+  // car: init single servo (SERVO0) incl. safe stop value, set to center
+  servo_pwm_init(0b0001, 0.5);
   servo_pwm_set(0, 0.5);
 
   // init CAN communication (incl. VESC/bldc_interface)
@@ -114,7 +134,7 @@ int main(void) {
 
   autopilot_init();
 
-  timeout_init(1000, 40.0); // safety timeout
+  timeout_init(1000, timeout_stop_cb, timeout_reset_cb); // safety timeout
 
   /*
    * main program loop

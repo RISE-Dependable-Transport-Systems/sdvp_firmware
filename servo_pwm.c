@@ -27,6 +27,10 @@
 #define TIM_CLOCK				1000000 // Hz
 #define ALL_CHANNELS			0xFF
 
+// Private variables
+static bool m_safety_stop;
+static float m_safe_stop_pulse_width;
+
 static PWMConfig pwmcfg3 = {
 		TIM_CLOCK,
 		(uint16_t)((uint32_t)TIM_CLOCK / (uint32_t)SERVO_UPDATE_RATE),
@@ -63,7 +67,10 @@ static PWMConfig pwmcfg9 = {
 
 static float pulse_width_current[4] = {0.0, 0.0, 0.0, 0.0};
 
-void servo_pwm_init(uint8_t servo_enable_mask) {
+void servo_pwm_init(uint8_t servo_enable_mask, float safe_stop_pulse_width) {
+	m_safety_stop = false;
+	m_safe_stop_pulse_width = safe_stop_pulse_width;
+
 	if (servo_enable_mask & (1 << 0))
 		pwmcfg3.channels[2].mode = PWM_OUTPUT_ACTIVE_HIGH;
 
@@ -100,10 +107,8 @@ void servo_pwm_set_all(float pulse_width) {
 void servo_pwm_set(uint8_t channel, float pulse_width) {
 	uint32_t cnt_val;
 
-	if (0) {
-		// Always set zero if emergency stop is set.
-		// TODO: Implement this
-		cnt_val = ((TIM_CLOCK / 1e3) * (uint32_t)SERVO_OUT_PULSE_MIN_US) / 1e3;
+	if (m_safety_stop) {
+		return;
 	} else {
 		cnt_val = ((TIM_CLOCK / 1e3) * (uint32_t)SERVO_OUT_PULSE_MIN_US) / 1e3 +
 				((TIM_CLOCK / 1e3) * (uint32_t)(pulse_width * (float)(SERVO_OUT_PULSE_MAX_US -
@@ -152,4 +157,12 @@ float servo_pwm_get(uint8_t id) {
 		return pulse_width_current[id];
 	else
 		return -1.0;
+}
+
+void servo_pwm_safety_stop(void) {
+	servo_pwm_set_all(m_safe_stop_pulse_width);
+	m_safety_stop = true;
+}
+void servo_pwm_reset_safety_stop(void) {
+	m_safety_stop = false;
 }

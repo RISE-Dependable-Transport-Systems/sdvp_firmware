@@ -21,9 +21,11 @@
 #include <stdint.h>
 
 // Functions
-void servo_pwm_init(uint8_t servo_enable_mask);
+void servo_pwm_init(uint8_t servo_enable_mask, float safe_stop_pulse_width);
 void servo_pwm_set(uint8_t id, float pulse_width);
 float servo_pwm_get(uint8_t id);
 void servo_pwm_set_all(float pulse_width);
+void servo_pwm_safety_stop(void);
+void servo_pwm_reset_safety_stop(void);
 
 #endif /* SERVO_PWM_H_ */

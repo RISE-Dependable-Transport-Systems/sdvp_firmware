@@ -21,7 +21,7 @@
 #include "ch.h"
 
 // Functions
-void timeout_init(systime_t timeoutms, float brake_curren);
+void timeout_init(systime_t timeoutms, void (*timeout_action_cb)(void), void (*timeout_reset_cb)(void));
 void timeout_reset(void);
 
 #endif /* TIMEOUT_H_ */
