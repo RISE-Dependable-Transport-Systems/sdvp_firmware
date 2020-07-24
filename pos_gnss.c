@@ -4,6 +4,8 @@
 #include "terminal.h"
 #include "commands.h"
 #include "time_today.h"
+#include "rtcm3_simple.h"
+#include "ublox.h"
 #include "pos.h"
 #include "ch.h"
 #include <math.h>
@@ -15,10 +17,14 @@ static mutex_t m_mutex_gps;
 static bool m_ubx_pos_valid;
 static nmea_gsv_info_t m_gpgsv_last;
 static nmea_gsv_info_t m_glgsv_last;
+static rtcm3_state m_rtcm_state;
 
 // Private functions
 static void init_gps_local(GPS_STATE *gps);
 static void cmd_terminal_reset_enu_ref(int argc, const char **argv);
+static void rtcm_rx(uint8_t *data, int len, int type);
+static void rtcm_base_rx(rtcm_ref_sta_pos_t *pos);
+
 
 void pos_gnss_init(void) {
 	memset(&m_gps, 0, sizeof(m_gps));
@@ -26,6 +32,10 @@ void pos_gnss_init(void) {
 	memset(&m_gpgsv_last, 0, sizeof(m_gpgsv_last));
 	memset(&m_glgsv_last, 0, sizeof(m_glgsv_last));
 	m_ubx_pos_valid = true;
+
+	rtcm3_init_state(&m_rtcm_state);
+	rtcm3_set_rx_callback(rtcm_rx, &m_rtcm_state);
+	rtcm3_set_rx_callback_1005_1006(rtcm_base_rx, &m_rtcm_state);
 
 	terminal_register_command_callback(
 			"pos_reset_enu",
@@ -176,7 +186,6 @@ void pos_gnss_nmea_cb(const char *data) {
 		commands_send_nmea(data, strlen(data));
 }
 
-
 static void init_gps_local(GPS_STATE *gps) {
 	gps->ix = gps->x;
 	gps->iy = gps->y;
@@ -203,4 +212,21 @@ static void init_gps_local(GPS_STATE *gps) {
 	gps->lx = 0.0;
 	gps->ly = 0.0;
 	gps->lz = 0.0;
+}
+
+void pos_gnss_input_rtcm3(const unsigned char *data, const unsigned int len) {
+	for (unsigned int i = 0;i < len;i++) {
+		rtcm3_input_data(data[i], &m_rtcm_state);
+	}
+}
+
+static void rtcm_rx(uint8_t *data, int len, int type) {
+	(void)type;
+	ublox_send(data, len);
+}
+
+static void rtcm_base_rx(rtcm_ref_sta_pos_t *pos) {
+	if (main_config.gps_use_rtcm_base_as_enu_ref) {
+		pos_gnss_set_enu_ref(pos->lat, pos->lon, pos->height);
+	}
 }

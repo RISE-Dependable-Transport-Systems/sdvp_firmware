@@ -9,5 +9,6 @@ void pos_gnss_get(GPS_STATE *p);
 void pos_gnss_set_enu_ref(double lat, double lon, double height);
 void pos_gnss_get_enu_ref(double *llh);
 void pos_gnss_nmea_cb(const char *data);
+void pos_gnss_input_rtcm3(const unsigned char *data, const unsigned int len);
 
 #endif /* POS_GNSS_H_ */

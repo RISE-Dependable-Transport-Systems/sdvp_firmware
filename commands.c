@@ -11,9 +11,8 @@
 #include "comm_can.h"
 #include "pos.h"
 #include "pos_gnss.h"
-#include "timeout.h"
 #include "rtcm3_simple.h"
-#include "ublox.h"
+#include "timeout.h"
 #include "autopilot.h"
 #include <stdint.h>
 #include <stdarg.h>
@@ -22,17 +21,6 @@
 // Private variables
 static uint8_t m_send_buffer[PACKET_MAX_PL_LEN];
 static void(*m_send_func)(unsigned char *data, unsigned int len) = 0;
-static rtcm3_state m_rtcm_state; // TODO: move to pos_gnss when refactoring
-
-// Private functions
-static void rtcm_rx(uint8_t *data, int len, int type); // TODO: move to pos_gnss when refactoring
-static void rtcm_base_rx(rtcm_ref_sta_pos_t *pos); // TODO: move to pos_gnss when refactoring
-
-void commands_init(void) {
-	rtcm3_init_state(&m_rtcm_state);
-	rtcm3_set_rx_callback(rtcm_rx, &m_rtcm_state);
-	rtcm3_set_rx_callback_1005_1006(rtcm_base_rx, &m_rtcm_state);
-}
 
 /**
  * Provide a function to use the next time there are packets to be sent.
@@ -79,9 +67,7 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 	}
 
 	if (data[0] == RTCM3PREAMB) {
-		for (unsigned int i = 0;i < len;i++) {
-			rtcm3_input_data(data[i], &m_rtcm_state);
-		}
+		pos_gnss_input_rtcm3(data, len);
 		return;
 	}
 
@@ -302,9 +288,7 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 		} break;
 
 		case CMD_SEND_RTCM_USB: {
-			for (unsigned int i = 0;i < len;i++) {
-				rtcm3_input_data(data[i], &m_rtcm_state);
-			}
+			pos_gnss_input_rtcm3(data, len);
 		} break;
 
 		case CMD_SET_YAW_OFFSET:
@@ -774,15 +758,4 @@ void commands_send_plot_points(float x, float y) {
 	buffer_append_float32_auto(m_send_buffer, x, &ind);
 	buffer_append_float32_auto(m_send_buffer, y, &ind);
 	commands_send_packet((unsigned char*)m_send_buffer, ind);
-}
-
-static void rtcm_rx(uint8_t *data, int len, int type) {
-	(void)type;
-	ublox_send(data, len);
-}
-
-static void rtcm_base_rx(rtcm_ref_sta_pos_t *pos) {
-	if (main_config.gps_use_rtcm_base_as_enu_ref) {
-		pos_gnss_set_enu_ref(pos->lat, pos->lon, pos->height);
-	}
 }
