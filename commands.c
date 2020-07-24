@@ -10,6 +10,7 @@
 #include "bldc_interface.h"
 #include "comm_can.h"
 #include "pos.h"
+#include "pos_gnss.h"
 #include "timeout.h"
 #include "rtcm3_simple.h"
 #include "ublox.h"
@@ -135,7 +136,7 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			lat = buffer_get_double64(data, D(1e16), &ind);
 			lon = buffer_get_double64(data, D(1e16), &ind);
 			height = buffer_get_float32(data, 1e3, &ind);
-			pos_set_enu_ref(lat, lon, height);
+			pos_gnss_set_enu_ref(lat, lon, height);
 
 			// Send ack
 			int32_t send_index = 0;
@@ -149,7 +150,7 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			commands_set_send_func(func);
 
 			double llh[3];
-			pos_get_enu_ref(llh);
+			pos_gnss_get_enu_ref(llh);
 
 			int32_t send_index = 0;
 			m_send_buffer[send_index++] = id_ret;
@@ -782,6 +783,6 @@ static void rtcm_rx(uint8_t *data, int len, int type) {
 
 static void rtcm_base_rx(rtcm_ref_sta_pos_t *pos) {
 	if (main_config.gps_use_rtcm_base_as_enu_ref) {
-		pos_set_enu_ref(pos->lat, pos->lon, pos->height);
+		pos_gnss_set_enu_ref(pos->lat, pos->lon, pos->height);
 	}
 }

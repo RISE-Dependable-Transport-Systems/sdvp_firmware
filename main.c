@@ -27,6 +27,7 @@
 #include "time_today.h"
 #include "bmi160_wrapper.h"
 #include "pos.h"
+#include "pos_gnss.h"
 #include "servo_pwm.h"
 #include "comm_can.h"
 #include "bldc_interface.h"
@@ -120,11 +121,12 @@ int main(void) {
   // Set bldc_interface (Motor Controller) callback
   // pos input: IMU (500 Hz), GNSS (5 Hz), Motor Controller (50 Hz)
   pos_init();
+  pos_gnss_init();
   bmi160_wrapper_init(500);
   bmi160_wrapper_set_read_callback(pos_imu_data_callback);
   palWriteLine(LINE_LED_RED, 1);
   ublox_init();
-  ublox_set_nmea_callback(&pos_input_nmea);
+  ublox_set_nmea_callback(&pos_gnss_nmea_cb);
   palWriteLine(LINE_LED_RED, 0); // u-blox init done
   bldc_interface_set_rx_value_func(pos_mc_values_received);
 
