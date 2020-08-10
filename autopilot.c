@@ -763,13 +763,13 @@ static THD_FUNCTION(ap_thread, arg) {
 
 				utils_truncate_number_abs(&speed, main_config.ap_max_speed);
 
-				servo_pwm_set(0, servo_pos); // TODO generalize
+				servo_pwm_set_ramped(0, servo_pos); // TODO generalize
 				autopilot_set_motor_speed(speed);
 			}
 		}
 
 		if (m_route_end) {
-			servo_pwm_set(0, main_config.car.steering_center); // TODO generalize
+			servo_pwm_set_ramped(0, main_config.car.steering_center); // TODO generalize
 			if (!main_config.car.disable_motor) {
 				bldc_interface_set_current_brake(10.0);
 			}

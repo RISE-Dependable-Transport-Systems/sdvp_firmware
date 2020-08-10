@@ -19,6 +19,7 @@
 #include "ch.h"
 #include "hal.h"
 #include "conf_general.h"
+#include "utils.h"
 
 // Settings
 #define SERVO_OUT_PULSE_MIN_US		1000 // TODO -> main_config
@@ -26,10 +27,18 @@
 #define SERVO_UPDATE_RATE			200	// Hz
 #define TIM_CLOCK				1000000 // Hz
 #define ALL_CHANNELS			0xFF
+#define RAMP_LOOP_HZ			50 // Hz
 
 // Private variables
 static bool m_safety_stop;
 static float m_safe_stop_pulse_width;
+static float m_pulse_width_ramp_towards[4] = {0.0, 0.0, 0.0, 0.0};
+static float m_pulse_width_current[4] = {0.0, 0.0, 0.0, 0.0};
+static THD_WORKING_AREA(ramp_thread_wa, 128);
+
+// Private functions
+static THD_FUNCTION(ramp_thread, arg);
+static inline void __servo_pwm_set_io(uint8_t channel, float pulse_width);
 
 static PWMConfig pwmcfg3 = {
 		TIM_CLOCK,
@@ -65,7 +74,6 @@ static PWMConfig pwmcfg9 = {
 #endif
 };
 
-static float pulse_width_current[4] = {0.0, 0.0, 0.0, 0.0};
 
 void servo_pwm_init(uint8_t servo_enable_mask, float safe_stop_pulse_width) {
 	m_safety_stop = false;
@@ -85,6 +93,8 @@ void servo_pwm_init(uint8_t servo_enable_mask, float safe_stop_pulse_width) {
 
 	pwmStart(&PWMD3, &pwmcfg3);
 	pwmStart(&PWMD9, &pwmcfg9);
+
+	chThdCreateStatic(ramp_thread_wa, sizeof(ramp_thread_wa), NORMALPRIO, ramp_thread, NULL);
 }
 
 void servo_pwm_set_all(float pulse_width) {
@@ -92,7 +102,7 @@ void servo_pwm_set_all(float pulse_width) {
 }
 
 /**
- * Set output pulsewidth.
+ * Set output pulsewidth without ramping.
  *
  * @param channel
  * Channel to use
@@ -105,6 +115,19 @@ void servo_pwm_set_all(float pulse_width) {
  *
  */
 void servo_pwm_set(uint8_t channel, float pulse_width) {
+	utils_truncate_number(&pulse_width, 0.0, 1.0);
+	if (channel == ALL_CHANNELS) {
+		m_pulse_width_ramp_towards[0] = pulse_width;
+		m_pulse_width_ramp_towards[1] = pulse_width;
+		m_pulse_width_ramp_towards[2] = pulse_width;
+		m_pulse_width_ramp_towards[3] = pulse_width;
+	} else
+		m_pulse_width_ramp_towards[channel] = pulse_width;
+
+	__servo_pwm_set_io(channel, pulse_width);
+}
+
+void __servo_pwm_set_io(uint8_t channel, float pulse_width) {
 	uint32_t cnt_val;
 
 	if (m_safety_stop) {
@@ -118,22 +141,22 @@ void servo_pwm_set(uint8_t channel, float pulse_width) {
 	switch(channel) {
 	case 0:
 		pwmEnableChannel(&PWMD3, 2, cnt_val);
-		pulse_width_current[0] = pulse_width;
+		m_pulse_width_current[0] = pulse_width;
 		break;
 
 	case 1:
 		pwmEnableChannel(&PWMD3, 3, cnt_val);
-		pulse_width_current[1] = pulse_width;
+		m_pulse_width_current[1] = pulse_width;
 		break;
 
 	case 2:
 		pwmEnableChannel(&PWMD9, 0, cnt_val);
-		pulse_width_current[2] = pulse_width;
+		m_pulse_width_current[2] = pulse_width;
 		break;
 
 	case 3:
 		pwmEnableChannel(&PWMD9, 1, cnt_val);
-		pulse_width_current[3] = pulse_width;
+		m_pulse_width_current[3] = pulse_width;
 		break;
 
 	case ALL_CHANNELS:
@@ -141,10 +164,10 @@ void servo_pwm_set(uint8_t channel, float pulse_width) {
 		pwmEnableChannel(&PWMD3, 3, cnt_val);
 		pwmEnableChannel(&PWMD9, 0, cnt_val);
 		pwmEnableChannel(&PWMD9, 1, cnt_val);
-		pulse_width_current[0] = pulse_width;
-		pulse_width_current[1] = pulse_width;
-		pulse_width_current[2] = pulse_width;
-		pulse_width_current[3] = pulse_width;
+		m_pulse_width_current[0] = pulse_width;
+		m_pulse_width_current[1] = pulse_width;
+		m_pulse_width_current[2] = pulse_width;
+		m_pulse_width_current[3] = pulse_width;
 		break;
 
 	default:
@@ -152,9 +175,33 @@ void servo_pwm_set(uint8_t channel, float pulse_width) {
 	}
 }
 
+/**
+ * Set output pulsewidth with ramping.
+ *
+ * @param channel
+ * Channel to use
+ * Range: [0 - 3]
+ * 0xFF: All Channels
+ *
+ * @param pulse_width
+ * Pulsewidth to use
+ * Range: [0.0 - 1.0]
+ *
+ */
+void servo_pwm_set_ramped(uint8_t channel, float pulse_width) {
+	utils_truncate_number(&pulse_width, 0.0, 1.0);
+	if (channel == ALL_CHANNELS) {
+		m_pulse_width_ramp_towards[0] = pulse_width;
+		m_pulse_width_ramp_towards[1] = pulse_width;
+		m_pulse_width_ramp_towards[2] = pulse_width;
+		m_pulse_width_ramp_towards[3] = pulse_width;
+	} else
+		m_pulse_width_ramp_towards[channel] = pulse_width;
+}
+
 float servo_pwm_get(uint8_t id) {
 	if (id <= 3)
-		return pulse_width_current[id];
+		return m_pulse_width_current[id];
 	else
 		return -1.0;
 }
@@ -165,4 +212,22 @@ void servo_pwm_safety_stop(void) {
 }
 void servo_pwm_reset_safety_stop(void) {
 	m_safety_stop = false;
+}
+
+static THD_FUNCTION(ramp_thread, arg) {
+	(void)arg;
+
+	chRegSetThreadName("servo_pwm ramp");
+
+	for(;;) {
+		for (int i = 0; i < 4; i++) {
+			const float pos_prev = m_pulse_width_current[i];
+			utils_step_towards(&m_pulse_width_current[i], m_pulse_width_ramp_towards[i], 1.0 / ((float)RAMP_LOOP_HZ * main_config.car.steering_ramp_time));
+
+			if (m_pulse_width_current[i] != pos_prev)
+				__servo_pwm_set_io(i, m_pulse_width_current[i]);
+		}
+
+		chThdSleep(CH_CFG_ST_FREQUENCY / RAMP_LOOP_HZ);
+	}
 }

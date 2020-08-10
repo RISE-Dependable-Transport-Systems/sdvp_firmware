@@ -668,14 +668,14 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			steering = utils_map(steering, -1.0, 1.0,
 					main_config.car.steering_center + (main_config.car.steering_range / 2.0),
 					main_config.car.steering_center - (main_config.car.steering_range / 2.0));
-			servo_pwm_set(0, steering);
+			servo_pwm_set_ramped(0, steering);
 		} break;
 
 		case CMD_SET_SERVO_DIRECT: {
 			int32_t ind = 0;
 			float steering = buffer_get_float32(data, 1e6, &ind);
 			utils_truncate_number(&steering, 0.0, 1.0);
-			servo_pwm_set(0, steering);
+			servo_pwm_set_ramped(0, steering);
 		} break;
 
 		default:
