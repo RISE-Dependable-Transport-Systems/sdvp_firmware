@@ -11,6 +11,7 @@
 #include "comm_can.h"
 #include "pos.h"
 #include "pos_gnss.h"
+#include "pos_imu.h"
 #include "rtcm3_simple.h"
 #include "timeout.h"
 #include "autopilot.h"
@@ -595,7 +596,7 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			commands_set_send_func(func);
 
 			pos_get_pos(&pos);
-			pos_get_imu(accel, gyro, mag);
+			pos_imu_get(accel, gyro, mag);
 			autopilot_get_goal_now(&rp_goal);
 
 			int32_t send_index = 0;
