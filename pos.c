@@ -42,7 +42,6 @@ void pos_init(void) {
 	m_en_delay_comp = true;
 	m_imu_yaw_offset = 0.0;
 
-
 	m_yaw_imu_clamp = 0.0;
 	m_yaw_imu_clamp_set = false;
 
@@ -85,6 +84,14 @@ float pos_get_yaw(void) {
 
 float pos_get_speed(void) {
 	return m_pos.speed;
+}
+
+float pos_get_gnss_speed(void) {
+	const float dt_gps = (m_pos.gps_ms - m_pos.gps_ms_last) / 1000.0;
+	const float vx_gps = (m_pos.px_gps - m_pos.px_gps_last) / dt_gps;
+	const float vy_gps = (m_pos.py_gps - m_pos.py_gps_last) / dt_gps;
+
+	return sqrtf(SQ(vx_gps) + SQ(vy_gps));
 }
 
 void pos_set_xya(float x, float y, float angle) {

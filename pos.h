@@ -8,6 +8,7 @@ void pos_init(void);
 void pos_get_pos(POS_STATE *p);
 float pos_get_yaw(void);
 float pos_get_speed(void);
+float pos_get_gnss_speed(void);
 void pos_set_xya(float x, float y, float angle);
 void pos_set_yaw_offset(float angle);
 void pos_correction_imu(const float roll, const float pitch, const float yaw, const float yaw_mag, const float gyro[3], const float quaternions[4], const float dt);
