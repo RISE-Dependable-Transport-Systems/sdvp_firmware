@@ -134,8 +134,9 @@ CSRC = $(ALLCSRC) \
        conf_general.c \
        i2c_bb.c \
        pos.c \
-       pos_gnss.c \
+       pos_mc.c \
        pos_imu.c \
+       pos_gnss.c \
        buffer.c \
        utils.c \
        terminal.c \

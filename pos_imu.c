@@ -1,3 +1,4 @@
+#include "pos_imu.h"
 #include "ch.h"
 #include "utils.h"
 #include "conf_general.h"

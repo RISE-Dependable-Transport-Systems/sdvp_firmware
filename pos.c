@@ -25,9 +25,6 @@ static bool m_pos_history_print;
 static float m_imu_yaw_offset;
 static float m_yaw_imu_clamp;
 static bool m_yaw_imu_clamp_set;
-// Motor controller
-static mc_values m_mc_val;
-
 
 // Private functions
 static void cmd_terminal_delay_info(int argc, const char **argv);
@@ -35,11 +32,9 @@ static void cmd_terminal_gps_corr_info(int argc, const char **argv);
 static void cmd_terminal_delay_comp(int argc, const char **argv);
 static void save_pos_history(void);
 static POS_POINT get_closest_point_to_time(int32_t time);
-static void car_update_pos(float distance, float turn_rad_rear, float angle_diff, float speed);
 
 void pos_init(void) {
 	memset(&m_pos, 0, sizeof(m_pos));
-	memset(&m_mc_val, 0, sizeof(m_mc_val));
 	memset(&m_pos_history, 0, sizeof(m_pos_history));
 	m_pos_history_ptr = 0;
 	m_pos_history_print = false;
@@ -382,54 +377,7 @@ void pos_correction_gnss(const float gnss_px, const float gnss_py, const float g
 	chMtxUnlock(&m_mutex_pos);
 }
 
-void pos_mc_values_received(mc_values *val) {
-	m_mc_val = *val;
-
-	static float last_tacho = 0;
-	static bool tacho_read = false;
-	float tacho = m_mc_val.tachometer;
-	float rpm = m_mc_val.rpm;
-
-	// Reset tacho the first time.
-	if (!tacho_read) {
-		tacho_read = true;
-		last_tacho = tacho;
-	}
-
-	float distance = (tacho - last_tacho) * main_config.car.gear_ratio
-			* (2.0 / main_config.car.motor_poles) * (1.0 / 6.0)
-			* main_config.car.wheel_diam * M_PI;
-	last_tacho = tacho;
-
-	float angle_diff = 0.0;
-	float turn_rad_rear = 0.0;
-
-	float steering_angle = (servo_pwm_get(0) // TODO: generalize
-			- main_config.car.steering_center)
-			* ((2.0 * main_config.car.steering_max_angle_rad)
-					/ main_config.car.steering_range);
-
-	if (fabsf(steering_angle) >= 1e-6) {
-		turn_rad_rear = main_config.car.axis_distance / tanf(steering_angle);
-		float turn_rad_front = sqrtf(
-				main_config.car.axis_distance * main_config.car.axis_distance
-				+ turn_rad_rear * turn_rad_rear);
-
-		if (turn_rad_rear < 0) {
-			turn_rad_front = -turn_rad_front;
-		}
-
-		angle_diff = (distance * 2.0) / (turn_rad_rear + turn_rad_front);
-	}
-
-	float speed = rpm * main_config.car.gear_ratio
-			* (2.0 / main_config.car.motor_poles) * (1.0 / 60.0)
-			* main_config.car.wheel_diam * M_PI;
-
-	car_update_pos(distance, turn_rad_rear, angle_diff, speed);
-}
-
-static void car_update_pos(float distance, float turn_rad_rear, float angle_diff, float speed) {
+void pos_correction_mc(float distance, float turn_rad_rear, float angle_diff, float speed) {
 	chMtxLock(&m_mutex_pos);
 
 	if (fabsf(distance) > 1e-6) {
