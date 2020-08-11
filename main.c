@@ -34,6 +34,7 @@
 #include "servo_pwm.h"
 #include "comm_can.h"
 #include "bldc_interface.h"
+#include "motor_sim.h"
 #include "ublox.h"
 #include "timeout.h"
 #include "autopilot.h"
@@ -141,6 +142,8 @@ int main(void) {
   autopilot_init();
 
   log_init();
+
+  motor_sim_init();
 
   timeout_init(1000, timeout_stop_cb, timeout_reset_cb); // safety timeout
 

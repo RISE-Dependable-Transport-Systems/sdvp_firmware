@@ -17,6 +17,7 @@
 #include "rtcm3_simple.h"
 #include "timeout.h"
 #include "autopilot.h"
+#include "motor_sim.h"
 #include <stdint.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -380,6 +381,8 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			main_config.car.steering_range = buffer_get_float32_auto(data, &ind);
 			main_config.car.steering_ramp_time = buffer_get_float32_auto(data, &ind);
 			main_config.car.axis_distance = buffer_get_float32_auto(data, &ind);
+
+			motor_sim_set_running(main_config.car.simulate_motor);
 
 			// Multirotor settings
 			main_config.mr.vel_decay_e = buffer_get_float32_auto(data, &ind);
