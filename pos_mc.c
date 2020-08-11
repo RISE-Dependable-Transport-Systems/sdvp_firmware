@@ -58,3 +58,7 @@ void pos_mc_values_cb(mc_values *val) {
 
 	pos_correction_mc(distance, turn_rad_rear, angle_diff, speed);
 }
+
+void pos_mc_get(mc_values *val) {
+	*val = m_mc_val;
+}

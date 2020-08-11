@@ -595,7 +595,7 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 
 			commands_set_send_func(func);
 
-			pos_get_pos(&pos);
+			pos_get(&pos);
 			pos_imu_get(accel, gyro, mag);
 			autopilot_get_goal_now(&rp_goal);
 

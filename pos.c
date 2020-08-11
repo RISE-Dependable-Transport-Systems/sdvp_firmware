@@ -72,7 +72,7 @@ void pos_init(void) {
 			cmd_terminal_delay_comp);
 }
 
-void pos_get_pos(POS_STATE *p) {
+void pos_get(POS_STATE *p) {
 	chMtxLock(&m_mutex_pos);
 	*p = m_pos;
 	chMtxUnlock(&m_mutex_pos);

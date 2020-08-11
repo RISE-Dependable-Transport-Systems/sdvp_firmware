@@ -5,5 +5,6 @@
 
 void pos_mc_init(void);
 void pos_mc_values_cb(mc_values *val);
+void pos_mc_get(mc_values *val);
 
 #endif /* POS_MC_H_ */

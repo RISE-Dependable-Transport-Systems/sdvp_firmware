@@ -5,7 +5,7 @@
 
 // Functions
 void pos_init(void);
-void pos_get_pos(POS_STATE *p);
+void pos_get(POS_STATE *p);
 float pos_get_yaw(void);
 float pos_get_speed(void);
 float pos_get_gnss_speed(void);

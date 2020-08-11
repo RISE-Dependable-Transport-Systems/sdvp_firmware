@@ -241,7 +241,7 @@ void autopilot_sync_point(int32_t point, int32_t time, int32_t min_time_diff) {
 	}
 
 	POS_STATE p;
-	pos_get_pos(&p);
+	pos_get(&p);
 
 	// Car center
 	const float car_cx = p.px;
@@ -442,7 +442,7 @@ static THD_FUNCTION(ap_thread, arg) {
 		if (len >= 2) {
 			POS_STATE pos_now;
 
-			pos_get_pos(&pos_now);
+			pos_get(&pos_now);
 
 			// Car center
 			const float car_cx = pos_now.px;
