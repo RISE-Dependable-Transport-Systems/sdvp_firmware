@@ -364,7 +364,7 @@ void ublox_set_nmea_callback(void (*nmea_callback)(const char *data)) {
 	m_nmea_callback = nmea_callback;
 }
 
-void ublox_send(unsigned char *data, unsigned int len) {
+void ublox_send(const unsigned char *data, unsigned int len) {
 	if (!process_tp) {
 		return;
 	}

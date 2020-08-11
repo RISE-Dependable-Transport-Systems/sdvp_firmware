@@ -215,6 +215,7 @@ static void init_gps_local(GPS_STATE *gps) {
 }
 
 void pos_gnss_input_rtcm3(const unsigned char *data, const unsigned int len) {
+	ublox_send(data, len);
 	for (unsigned int i = 0;i < len;i++) {
 		rtcm3_input_data(data[i], &m_rtcm_state);
 	}

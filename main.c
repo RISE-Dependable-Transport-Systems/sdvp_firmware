@@ -24,6 +24,7 @@
 #include "terminal.h"
 #include "chprintf.h"
 #include "conf_general.h"
+#include "log.h"
 #include "time_today.h"
 #include "bmi160_wrapper.h"
 #include "pos.h"
@@ -138,6 +139,8 @@ int main(void) {
   palSetLineCallback(LINE_UBX_PPS, time_today_pps_cb, NULL);
 
   autopilot_init();
+
+  log_init();
 
   timeout_init(1000, timeout_stop_cb, timeout_reset_cb); // safety timeout
 

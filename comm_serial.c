@@ -16,9 +16,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
     */
 
-#include "commands.h"
 #include "ch.h"
 #include "hal.h"
+#include "commands.h"
 #include "comm_serial.h"
 #include "packet.h"
 
@@ -110,11 +110,8 @@ static THD_FUNCTION(serial_process_thread, arg) {
 }
 
 static void process_packet(unsigned char *data, unsigned int len) {
-#if UBLOX_EN
-	if (packet_id == CMD_SEND_RTCM_USB) {
-		ublox_send(data + 2, len - 2);
-	}
-#endif
+	// packets received over serial are handled by "commands",
+	// responses are send as packets over serial again
 	commands_process_packet(data, len, comm_serial_send_packet);
 }
 

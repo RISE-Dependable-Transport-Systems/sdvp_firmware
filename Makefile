@@ -132,6 +132,7 @@ CSRC = $(ALLCSRC) \
        commands.c \
        comm_serial.c \
        conf_general.c \
+       log.c \
        i2c_bb.c \
        pos.c \
        pos_mc.c \

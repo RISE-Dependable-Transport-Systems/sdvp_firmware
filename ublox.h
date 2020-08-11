@@ -24,7 +24,7 @@
 
 void ublox_init(void);
 void ublox_set_nmea_callback(void (*m_nmea_callback)(const char *data));
-void ublox_send(unsigned char *data, unsigned int len);
+void ublox_send(const unsigned char *data, unsigned int len);
 void ublox_set_rx_callback_nav_sol(void(*func)(ubx_nav_sol *sol));
 void ublox_set_rx_callback_relposned(void(*func)(ubx_nav_relposned *pos));
 void ublox_set_rx_callback_rawx(void(*func)(ubx_rxm_rawx *rawx));

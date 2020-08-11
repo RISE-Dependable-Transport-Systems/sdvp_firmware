@@ -4,11 +4,13 @@
 #include "conf_general.h"
 #include "datatypes.h"
 #include "utils.h"
+#include "log.h"
 #include "time_today.h"
 #include "terminal.h"
 #include "servo_pwm.h"
 #include "bldc_interface.h"
 #include "comm_can.h"
+#include "comm_serial.h"
 #include "pos.h"
 #include "pos_gnss.h"
 #include "pos_imu.h"
@@ -358,10 +360,9 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			main_config.log_mode_ext = data[ind++];
 			main_config.log_uart_baud = buffer_get_uint32(data, &ind);
 
-//			log_set_rate(main_config.log_rate_hz);
-//			log_set_enabled(main_config.log_en);
-//			log_set_name(main_config.log_name);
-//			log_set_ext(main_config.log_mode_ext, main_config.log_uart_baud);
+			log_set_rate(main_config.log_rate_hz);
+			log_set_enabled(main_config.log_en);
+			log_set_name(main_config.log_name);
 
 			// Car settings
 			main_config.car.yaw_use_odometry = data[ind++];
@@ -707,6 +708,23 @@ void commands_vprintf(const char* format, va_list args) {
 
 	if(len > 0) {
 		commands_send_packet((unsigned char*)print_buffer, (len<509) ? len + 2: 512);
+	}
+}
+
+#define LOG_LINE_SIZE 256
+void commands_printf_log_serial(char* format, ...) {
+	va_list arg;
+	va_start (arg, format);
+	int len;
+	static char print_buffer[LOG_LINE_SIZE];
+
+	print_buffer[0] = ID_CAR_CLIENT;
+	print_buffer[1] = CMD_LOG_LINE_USB;
+	len = vsnprintf(print_buffer + 2, LOG_LINE_SIZE-2, format, arg);
+	va_end (arg);
+
+	if(len > 0) {
+		comm_serial_send_packet((unsigned char*)print_buffer, (len<LOG_LINE_SIZE-2) ? len + 2: LOG_LINE_SIZE);
 	}
 }
 

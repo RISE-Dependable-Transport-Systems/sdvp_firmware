@@ -1,8 +1,7 @@
 /*
-    Copyright 2012-2016 Benjamin Vedder	benjamin@vedder.se
-              2020      Marvin Damschen marvin.damschen@ri.se        
+	Copyright 2016 - 2017 Benjamin Vedder	benjamin@vedder.se
 
-    This program is free software: you can redistribute it and/or modify
+	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
@@ -14,15 +13,20 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-    */
+ */
 
-#ifndef COMM_SERIAL_H_
-#define COMM_SERIAL_H_
+#ifndef LOG_H_
+#define LOG_H_
 
-#include "hal.h"
+#include "ch.h"
+#include "chtypes.h"
+#include "chsystypes.h"
+#include "datatypes.h"
 
 // Functions
-void comm_serial_init(BaseSequentialStream *serialStream);
-void comm_serial_send_packet(unsigned char *data, unsigned int len);
+void log_init(void);
+void log_set_rate(int rate_hz);
+void log_set_enabled(bool enabled);
+void log_set_name(char *name);
 
-#endif /* COMM_SERIAL_H_ */
+#endif /* LOG_H_ */
