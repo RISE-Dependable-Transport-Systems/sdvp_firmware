@@ -142,6 +142,9 @@ int main(void) {
   autopilot_init();
 
   log_init();
+  log_set_rate(main_config.log_rate_hz);
+  log_set_enabled(main_config.log_en);
+  log_set_name(main_config.log_name);
 
   motor_sim_init();
 
