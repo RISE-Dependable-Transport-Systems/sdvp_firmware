@@ -116,9 +116,11 @@ include $(CHIBIOS)/os/hal/lib/streams/streams.mk
 
 # Custom files
 include imu/imu.mk
+include eeprom/eeprom.mk
 
 # Define linker script file here
-LDSCRIPT= $(STARTUPLD)/STM32F405xG.ld
+#LDSCRIPT= $(STARTUPLD)/STM32F405xG.ld
+LDSCRIPT= eeprom/ld_eeprom_emu.ld
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.

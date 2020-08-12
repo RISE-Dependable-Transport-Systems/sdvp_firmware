@@ -440,7 +440,7 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			main_config.mr.motor_pwm_min_us = buffer_get_uint16(data, &ind);
 			main_config.mr.motor_pwm_max_us = buffer_get_uint16(data, &ind);
 
-//			conf_general_store_main_config(&main_config);
+			conf_general_store_main_config(&main_config);
 
 			// Doing this while driving will get wrong as there is so much accelerometer noise then.
 			//pos_reset_attitude();

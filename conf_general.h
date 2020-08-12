@@ -59,5 +59,6 @@ extern int main_id;
 // Functions
 void conf_general_init(void);
 void conf_general_get_default_main_config(MAIN_CONFIG *conf);
+bool conf_general_store_main_config(MAIN_CONFIG *conf);
 
 #endif /* CONF_GENERAL_H_ */

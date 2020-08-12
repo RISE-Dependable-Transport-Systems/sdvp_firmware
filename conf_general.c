@@ -16,15 +16,39 @@
  */
 
 #include "conf_general.h"
+#include "utils.h"
+#include "stm32f4xx_conf.h"
+#include "eeprom.h"
 #include <string.h>
+
+// Settings
+#define EEPROM_BASE_MAINCONF		1000
 
 // Global variables
 MAIN_CONFIG main_config;
 int main_id = 0;
+uint16_t VirtAddVarTab[NB_OF_VAR];
+
+// Private functions
+static bool conf_general_load_main_conf(MAIN_CONFIG *conf);
 
 void conf_general_init(void) {
 	main_id = 0;
-	conf_general_get_default_main_config(&main_config);
+
+	// try to read config from emulated EEPROM, use default config if this fails
+	memset(VirtAddVarTab, 0, sizeof(VirtAddVarTab));
+
+	for (unsigned int i = 0;i < (sizeof(MAIN_CONFIG) / 2);i++) {
+		VirtAddVarTab[i] = EEPROM_BASE_MAINCONF + i;
+	}
+
+	FLASH_Unlock();
+	FLASH_ClearFlag(FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR | FLASH_FLAG_PGAERR |
+			FLASH_FLAG_PGPERR | FLASH_FLAG_PGSERR);
+	EE_Init();
+
+	if (!conf_general_load_main_conf(&main_config))
+		conf_general_get_default_main_config(&main_config);
 }
 
 /**
@@ -185,4 +209,49 @@ void conf_general_get_default_main_config(MAIN_CONFIG *conf) {
 	conf->log_mode_ext = LOG_EXT_ETHERNET;
 	conf->log_rate_hz = 10;
 #endif
+}
+
+static bool conf_general_load_main_conf(MAIN_CONFIG *conf) {
+	bool is_ok = true;
+	uint8_t *conf_addr = (uint8_t*)conf;
+	uint16_t var;
+
+	for (unsigned int i = 0;i < (sizeof(MAIN_CONFIG) / 2);i++) {
+		if (EE_ReadVariable(EEPROM_BASE_MAINCONF + i, &var) == 0) {
+			conf_addr[2 * i] = (var >> 8) & 0xFF;
+			conf_addr[2 * i + 1] = var & 0xFF;
+		} else {
+			is_ok = false;
+			break;
+		}
+	}
+
+	return is_ok;
+}
+
+bool conf_general_store_main_config(MAIN_CONFIG *conf) {
+	utils_sys_lock_cnt();
+//	RCC_APB1PeriphClockCmd(RCC_APB1Periph_WWDG, DISABLE);
+
+	bool is_ok = true;
+	uint8_t *conf_addr = (uint8_t*)conf;
+	uint16_t var;
+
+	FLASH_ClearFlag(FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR | FLASH_FLAG_PGAERR |
+			FLASH_FLAG_PGPERR | FLASH_FLAG_PGSERR);
+
+	for (unsigned int i = 0;i < (sizeof(MAIN_CONFIG) / 2);i++) {
+		var = (conf_addr[2 * i] << 8) & 0xFF00;
+		var |= conf_addr[2 * i + 1] & 0xFF;
+
+		if (EE_WriteVariable(EEPROM_BASE_MAINCONF + i, var) != FLASH_COMPLETE) {
+			is_ok = false;
+			break;
+		}
+	}
+
+//	RCC_APB1PeriphClockCmd(RCC_APB1Periph_WWDG, ENABLE);
+	utils_sys_unlock_cnt();
+
+	return is_ok;
 }
