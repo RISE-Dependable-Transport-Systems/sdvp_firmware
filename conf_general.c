@@ -17,9 +17,11 @@
 
 #include "conf_general.h"
 #include "utils.h"
+#include "terminal.h"
 #include "stm32f4xx_conf.h"
 #include "eeprom.h"
 #include <string.h>
+#include <stdio.h>
 
 // Settings
 #define EEPROM_BASE_MAINCONF		1000
@@ -31,6 +33,8 @@ uint16_t VirtAddVarTab[NB_OF_VAR];
 
 // Private functions
 static bool conf_general_load_main_conf(MAIN_CONFIG *conf);
+static void terminal_cmd_set_id(int argc, const char **argv);
+static void terminal_cmd_set_id_quiet(int argc, const char **argv);
 
 void conf_general_init(void) {
 	main_id = 0;
@@ -49,6 +53,17 @@ void conf_general_init(void) {
 
 	if (!conf_general_load_main_conf(&main_config))
 		conf_general_get_default_main_config(&main_config);
+
+	terminal_register_command_callback(
+			"set_id",
+			"Set the ID of the board.",
+			"[id]",
+			terminal_cmd_set_id);
+	terminal_register_command_callback(
+			"set_id_quiet",
+			"Set the ID of the board, and print no reply.",
+			"[id]",
+			terminal_cmd_set_id_quiet);
 }
 
 /**
@@ -254,4 +269,33 @@ bool conf_general_store_main_config(MAIN_CONFIG *conf) {
 	utils_sys_unlock_cnt();
 
 	return is_ok;
+}
+
+static void terminal_cmd_set_id(int argc, const char **argv) {
+	if (argc == 2) {
+		int set = -1;
+		sscanf(argv[1], "%d", &set);
+
+		if (set < 0 || set > 254) {
+			terminal_printf("Invalid argument\n");
+		} else {
+			main_id = set;
+			terminal_printf("ID is now %d\n", main_id);
+		}
+	} else {
+		terminal_printf("Wrong number of arguments\n");
+	}
+}
+
+static void terminal_cmd_set_id_quiet(int argc, const char **argv) {
+	if (argc == 2) {
+		int set = -1;
+		sscanf(argv[1], "%d", &set);
+
+		if (set < 0 || set > 254) {
+			// Wrong id
+		} else {
+			main_id = set;
+		}
+	}
 }
