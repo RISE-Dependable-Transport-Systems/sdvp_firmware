@@ -127,8 +127,8 @@ LDSCRIPT= eeprom/ld_eeprom_emu.ld
 CSRC = $(ALLCSRC) \
        $(TESTSRC) \
        $(CONFDIR)/portab.c \
+       $(CONFDIR)/usbcfg.c \
        $(CHIBIOS)/os/various/syscalls.c \
-       usbcfg.c \
        crc.c \
        packet.c \
        commands.c \

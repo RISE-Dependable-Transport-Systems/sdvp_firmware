@@ -1,5 +1,5 @@
 /*
-	Copyright 2017 Benjamin Vedder	benjamin@vedder.se
+	Copyright 2020        Marvin Damschen	marvin.damschen@ri.se
 
 	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -13,7 +13,9 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-    */
+
+    This file uses code from RC_Controller by Benjamin Vedder (pwm_esc, servo_simple).
+ */
 
 #include "servo_pwm.h"
 #include "ch.h"
