@@ -4,16 +4,15 @@
 
 .PHONY: rover copter
 
-all: rover copter
-
-rover:
+# clean before every build target to make sure all defines are handed down correctly
+rover: clean
 	@echo
 	@echo === Building rover firmware ========================================
 	+@make --no-print-directory -f ./rover/rover.make all
 	@echo ====================================================================
 	@echo
 
-copter:
+copter: clean
 	@echo
 	@echo === Building copter firmware =======================================
 	+@make --no-print-directory -f ./copter/copter.make all
