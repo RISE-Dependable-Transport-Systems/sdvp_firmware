@@ -168,7 +168,7 @@ ASMSRC = $(ALLASMSRC)
 ASMXSRC = $(ALLXASMSRC)
 
 # Inclusion directories.
-INCDIR = $(CONFDIR) $(ALLINC) $(TESTINC) $(COMMONDIR)
+INCDIR = $(CONFDIR) $(ALLINC) $(TESTINC) $(VEHICLEDIR) $(COMMONDIR)
 
 # Define C warning options here.
 CWARN = -Wall -Wextra -Wundef -Wstrict-prototypes

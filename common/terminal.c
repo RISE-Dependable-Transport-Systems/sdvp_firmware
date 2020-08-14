@@ -20,9 +20,6 @@
 #include "hal.h"
 #include "conf_general.h"
 #include "terminal.h"
-#if MAIN_MODE == MAIN_MODE_CAR
-#include "bldc_interface.h"
-#endif
 #include <string.h>
 #include <stdio.h>
 
@@ -59,10 +56,6 @@ void terminal_process_string(char *str) {
 	enum { kMaxArgs = 64 };
 	int argc = 0;
 	char *argv[kMaxArgs];
-
-#if MAIN_MODE == MAIN_MODE_CAR
-	static char buffer[256];
-#endif
 
 	char *p2 = strtok(str, " ");
 	while (p2 && argc < kMaxArgs) {
@@ -105,18 +98,6 @@ void terminal_process_string(char *str) {
 		terminal_printf(" ");
 	}
 
-#if MAIN_MODE == MAIN_MODE_CAR
-	else if (strcmp(argv[0], "vesc") == 0) {
-		buffer[0] = '\0';
-		int ind = 0;
-		for (int i = 1;i < argc;i++) {
-			sprintf(buffer + ind, " %s", argv[i]);
-			ind += strlen(argv[i]) + 1;
-		}
-		bldc_interface_terminal_cmd(buffer);
-	}
-#endif
-
 	// The help command
 	else if (strcmp(argv[0], "help") == 0) {
 		terminal_printf("Valid commands are:");
@@ -131,11 +112,6 @@ void terminal_process_string(char *str) {
 
 		terminal_printf("threads");
 		terminal_printf("  List all threads");
-
-#if MAIN_MODE == MAIN_MODE_CAR
-		terminal_printf("vesc");
-		terminal_printf("  Forward command to VESC");
-#endif
 
 		for (int i = 0;i < callback_write;i++) {
 			if (callbacks[i].arg_names) {

@@ -28,7 +28,8 @@
 #include "packet.h"
 #include "bldc_interface.h"
 #include "commands.h"
-//#include "motor_sim.h"
+#include "terminal.h"
+#include <stdio.h>
 
 // Settings
 #define CANDx						CAND1
@@ -68,6 +69,7 @@ static const CANConfig cancfg = {
 // Private functions
 static void send_packet_wrapper(unsigned char *data, unsigned int len);
 static void printf_wrapper(char *str);
+static void cmd_terminal_forward_vesc(int argc, const char **argv);
 
 void comm_can_init(void) {
 	for (int i = 0;i < CAN_STATUS_MSGS_TO_STORE;i++) {
@@ -85,6 +87,12 @@ void comm_can_init(void) {
 
 	bldc_interface_init(send_packet_wrapper);
 	bldc_interface_set_rx_printf_func(printf_wrapper);
+
+	terminal_register_command_callback(
+			"vesc",
+			"Forward command to VESC",
+			"[cmd]",
+			cmd_terminal_forward_vesc);
 
 	chThdCreateStatic(cancom_read_thread_wa, sizeof(cancom_read_thread_wa), NORMALPRIO + 1,
 			cancom_read_thread, NULL);
@@ -352,4 +360,16 @@ static void send_packet_wrapper(unsigned char *data, unsigned int len) {
 
 static void printf_wrapper(char *str) {
 	commands_printf(str);
+}
+
+static void cmd_terminal_forward_vesc(int argc, const char **argv) {
+	static char buffer[256];
+	buffer[0] = '\0';
+
+	int ind = 0;
+	for (int i = 1;i < argc;i++) {
+		sprintf(buffer + ind, " %s", argv[i]);
+		ind += strlen(argv[i]) + 1;
+	}
+	bldc_interface_terminal_cmd(buffer);
 }

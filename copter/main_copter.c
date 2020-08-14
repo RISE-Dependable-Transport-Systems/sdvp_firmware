@@ -29,16 +29,11 @@
 #include "time_today.h"
 #include "bmi160_wrapper.h"
 #include "pos.h"
-#include "pos_mc.h"
 #include "pos_imu.h"
 #include "pos_gnss.h"
 #include "servo_pwm.h"
-#include "comm_can.h"
-#include "bldc_interface.h"
-#include "motor_sim.h"
 #include "ublox.h"
 #include "timeout.h"
-#include "autopilot.h"
 
 // see: USB_CDC in ChibiOS testhal
 static void usbSerialInit(void) {
@@ -62,21 +57,17 @@ static void usbSerialInit(void) {
 static void timeout_stop_cb(void) {
   palWriteLine(LINE_LED_RED, 1);
 
-  // stop bldc_interface, brake if in motion
-  comm_can_set_vesc_id(ID_ALL);
-  if (!main_config.car.disable_motor && bldc_interface_get_last_received_values().rpm > TIMEOUT_MIN_RPM_BRAKE)
-    bldc_interface_set_current_safety_brake(40.0);
-  else
-    bldc_interface_safety_stop();
-
-  // set servo_pwm to safe value
-  servo_pwm_safety_stop();
+//  TODO!
+//  // set servo_pwm to safe value
+//  servo_pwm_safety_stop();
 }
 
 static void timeout_reset_cb(void) {
   palWriteLine(LINE_LED_RED, 0);
-  bldc_interface_reset_safety_stop();
-  servo_pwm_reset_safety_stop();
+
+//  TODO!
+//  // set servo_pwm to safe value
+//  servo_pwm_reset_safety_stop();
 }
 
 /*
@@ -114,18 +105,12 @@ int main(void) {
 
   conf_general_init();
 
-  // car: init single servo (SERVO0) incl. safe stop value, set to center
-  servo_pwm_init(0b0001, 0.5);
-  servo_pwm_set(0, 0.5);
-
-  // init CAN communication (incl. VESC/bldc_interface)
-  comm_can_init();
+  // copter: init all servos incl. safe stop value (TODO!), set to center
+  servo_pwm_init(0b1111, 0.0);
 
   // Init positioning (pos), BMI160 IMU and u-blox GNSS (F9P).
-  // Set bldc_interface (Motor Controller) callback
-  // pos input: IMU (500 Hz), GNSS (5 Hz), Motor Controller (50 Hz)
+  // pos input: IMU (500 Hz), GNSS (5 Hz)
   pos_init();
-  pos_mc_init();
   pos_imu_init();
   pos_gnss_init();
   bmi160_wrapper_init(500);
@@ -134,20 +119,15 @@ int main(void) {
   ublox_init();
   ublox_set_nmea_callback(&pos_gnss_nmea_cb);
   palWriteLine(LINE_LED_RED, 0); // u-blox init done
-  bldc_interface_set_rx_value_func(pos_mc_values_cb);
 
   // u-blox PPS callback for timekeeping
   palEnableLineEvent(LINE_UBX_PPS, PAL_EVENT_MODE_RISING_EDGE);
   palSetLineCallback(LINE_UBX_PPS, time_today_pps_cb, NULL);
 
-  autopilot_init();
-
   log_init();
   log_set_rate(main_config.log_rate_hz);
   log_set_enabled(main_config.log_en);
   log_set_name(main_config.log_name);
-
-  motor_sim_init();
 
   timeout_init(1000, timeout_stop_cb, timeout_reset_cb); // safety timeout
 
@@ -164,10 +144,6 @@ int main(void) {
 
 	// packet communication timeout
     packet_timerfunc();
-
-    // poll motor controller info every 20 ms -> 50 Hz
-    if (i % 2 == 0)
-    	bldc_interface_get_values();
 
     chThdSleepMilliseconds(10);
   }

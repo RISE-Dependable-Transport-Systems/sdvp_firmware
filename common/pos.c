@@ -213,8 +213,8 @@ void pos_correction_imu(const float roll, const float pitch, const float yaw, co
 	m_pos.yaw_rate = -gyro[2] * 180.0 / M_PI;
 
 	// Correct yaw
-#if MAIN_MODE == MAIN_MODE_CAR
-	{
+	// Prevent IMU drift when vehicle is stationary (only works for land vehicles)
+	if (VEHICLE_TYPE == VEHICLE_TYPE_ROVER) {
 		if (!m_yaw_imu_clamp_set) {
 			m_yaw_imu_clamp = m_pos.yaw_imu - m_imu_yaw_offset;
 			m_yaw_imu_clamp_set = true;
@@ -227,7 +227,7 @@ void pos_correction_imu(const float roll, const float pitch, const float yaw, co
 		}
 	}
 
-	if (main_config.car.yaw_use_odometry) {
+	if (VEHICLE_TYPE == VEHICLE_TYPE_ROVER && main_config.car.yaw_use_odometry) {
 		if (main_config.car.yaw_imu_gain > 1e-10) {
 			float ang_diff = utils_angle_difference(m_pos.yaw, m_pos.yaw_imu - m_imu_yaw_offset);
 
@@ -246,10 +246,6 @@ void pos_correction_imu(const float roll, const float pitch, const float yaw, co
 		m_pos.yaw = m_pos.yaw_imu - m_imu_yaw_offset;
 		utils_norm_angle(&m_pos.yaw);
 	}
-#else
-	m_pos.yaw = m_pos.yaw_imu - m_imu_yaw_offset;
-	utils_norm_angle(&m_pos.yaw);
-#endif
 
 	m_pos.q0 = quaternions[0];
 	m_pos.q1 = quaternions[1];

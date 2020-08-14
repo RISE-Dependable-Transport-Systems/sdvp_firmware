@@ -321,7 +321,7 @@ typedef struct {
 	uint16_t motor_pwm_max_us; // Maximum servo pulse length for motor in microseconds
 } MAIN_CONFIG_MULTIROTOR;
 
-// Car configuration
+// Main configuration
 typedef struct {
 	// Common vehicle settings
 	bool mag_use; // Use the magnetometer

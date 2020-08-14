@@ -23,16 +23,10 @@
 
 #define TIMEOUT_MIN_RPM_BRAKE		200
 
-#define MAIN_MODE_CAR 				0
-#define MAIN_MODE_MULTIROTOR		4
+#define VEHICLE_TYPE_ROVER			0
+#define VEHICLE_TYPE_COPTER			1
 
-// Main mode
-#ifndef MAIN_MODE
-#define MAIN_MODE					MAIN_MODE_CAR
-#endif
-
-// Mode macros
-#define MAIN_MODE_IS_VEHICLE		(MAIN_MODE == MAIN_MODE_CAR || MAIN_MODE == MAIN_MODE_MULTIROTOR)
+#define VEHICLE_TYPE				VEHICLE_TYPE_ROVER
 
 // Firmware version
 #define FW_VERSION_MAJOR			20
