@@ -155,6 +155,8 @@ CSRC = $(ALLCSRC) \
        $(COMMONDIR)/time_today.c \
        $(COMMONDIR)/autopilot.c \
        $(COMMONDIR)/motor_sim.c \
+       $(VEHICLEDIR)/copter_control.c \
+       $(VEHICLEDIR)/actuator.c \
        $(VEHICLEDIR)/main_copter.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global

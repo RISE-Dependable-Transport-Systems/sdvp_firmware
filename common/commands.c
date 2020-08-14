@@ -36,6 +36,7 @@
 #include "timeout.h"
 #include "autopilot.h"
 #include "motor_sim.h"
+#include "copter/copter_control.h"
 #include <stdint.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -759,22 +760,22 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 				commands_send_packet(m_send_buffer, send_index);
 			} break;
 
-//			case CMD_MR_RC_CONTROL: {
-//				int32_t ind = 0;
-//				float throttle = buffer_get_float32_auto(data, &ind);
-//				float roll = buffer_get_float32_auto(data, &ind);
-//				float pitch = buffer_get_float32_auto(data, &ind);
-//				float yaw = buffer_get_float32_auto(data, &ind);
-//				copter_control_set_input(throttle, roll, pitch, yaw);
-//			} break;
-//
-//			case CMD_MR_OVERRIDE_POWER: {
-//				int32_t ind = 0;
-//				copter_control_set_motor_override(0, buffer_get_float32_auto(data, &ind));
-//				copter_control_set_motor_override(1, buffer_get_float32_auto(data, &ind));
-//				copter_control_set_motor_override(2, buffer_get_float32_auto(data, &ind));
-//				copter_control_set_motor_override(3, buffer_get_float32_auto(data, &ind));
-//			} break;
+			case CMD_MR_RC_CONTROL: {
+				int32_t ind = 0;
+				float throttle = buffer_get_float32_auto(data, &ind);
+				float roll = buffer_get_float32_auto(data, &ind);
+				float pitch = buffer_get_float32_auto(data, &ind);
+				float yaw = buffer_get_float32_auto(data, &ind);
+				copter_control_set_input(throttle, roll, pitch, yaw);
+			} break;
+
+			case CMD_MR_OVERRIDE_POWER: {
+				int32_t ind = 0;
+				copter_control_set_motor_override(0, buffer_get_float32_auto(data, &ind));
+				copter_control_set_motor_override(1, buffer_get_float32_auto(data, &ind));
+				copter_control_set_motor_override(2, buffer_get_float32_auto(data, &ind));
+				copter_control_set_motor_override(3, buffer_get_float32_auto(data, &ind));
+			} break;
 
 			default:
 				break;
