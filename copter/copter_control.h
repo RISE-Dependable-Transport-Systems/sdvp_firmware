@@ -29,5 +29,7 @@ void copter_control_set_input(float throttle, float roll, float pitch, float yaw
 void copter_control_set_motor_override(int motor, float power);
 bool copter_control_is_throttle_over_tres(void);
 void copter_control_run_iteration(float dt);
+void copter_control_pos_correction_gnss(POS_STATE *pos, float dt);
+void copter_control_pos_correction_imu(POS_STATE *pos, float dt);
 
 #endif /* COPTER_CONTROL_H_ */

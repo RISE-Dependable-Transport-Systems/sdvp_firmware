@@ -34,6 +34,7 @@
 #include "servo_pwm.h"
 #include "ublox.h"
 #include "timeout.h"
+#include "copter_control.h"
 
 // see: USB_CDC in ChibiOS testhal
 static void usbSerialInit(void) {
@@ -105,12 +106,17 @@ int main(void) {
 
   conf_general_init();
 
-  // copter: init all servos incl. safe stop value (TODO!), set to center
+  // copter: init all servos incl. safe stop value (TODO!)
   servo_pwm_init(0b1111, 0.0);
 
   // Init positioning (pos), BMI160 IMU and u-blox GNSS (F9P).
-  // pos input: IMU (500 Hz), GNSS (5 Hz)
+  // pos input: IMU (500 Hz), GNSS (5 Hz).
+  // Copter-specific correction functions are called by pos using registered hooks.
+  // Copter control iteration is run _after_ IMU-based position correction (post hook).
   pos_init();
+  pos_set_correction_imu_hook(copter_control_pos_correction_imu);
+  pos_set_correction_imu_post_hook(copter_control_run_iteration);
+  pos_set_correction_gnss_hook(copter_control_pos_correction_gnss);
   pos_imu_init();
   pos_gnss_init();
   bmi160_wrapper_init(500);

@@ -39,6 +39,9 @@ static mutex_t m_mutex_pos;
 static bool m_en_delay_comp;
 static bool m_gps_corr_print;
 static bool m_pos_history_print;
+static void (*m_pos_correction_gnss_hook)(POS_STATE *, float) = NULL;
+static void (*m_pos_correction_imu_hook)(POS_STATE *, float) = NULL;
+static void (*m_pos_correction_imu_post_hook)(float) = NULL;
 // IMU
 static float m_imu_yaw_offset;
 static float m_yaw_imu_clamp;
@@ -253,7 +256,15 @@ void pos_correction_imu(const float roll, const float pitch, const float yaw, co
 	m_pos.q2 = quaternions[2];
 	m_pos.q3 = quaternions[3];
 
+	// Perform vehicle-type-specific corrections if necessary (should be registered in main)
+	if (m_pos_correction_imu_hook)
+		m_pos_correction_imu_hook(&m_pos, dt);
+
 	chMtxUnlock(&m_mutex_pos);
+
+	// After corrections, trigger vehicle-type-specific actions if necessary (should be registered in main)
+	if (m_pos_correction_imu_post_hook)
+		m_pos_correction_imu_post_hook(dt);
 }
 
 static void save_pos_history(void) {
@@ -395,6 +406,15 @@ void pos_correction_gnss(const float gnss_px, const float gnss_py, const float g
 	m_pos.gps_ang_corr_y_last_gps = gnss_py;
 	m_pos.gps_ang_corr_last_gps_ms = gnss_ms;
 
+	// Perform vehicle-type-specific corrections if necessary (should be registered in main)
+	if (m_pos_correction_gnss_hook) {
+		const float time_now = time_today_get_ms();
+		static float time_last = 0;
+		float dt = (time_now - time_last) / 1000.0;
+		time_last = time_now;
+
+		m_pos_correction_gnss_hook(&m_pos, dt);
+	}
 
 	chMtxUnlock(&m_mutex_pos);
 }
@@ -426,4 +446,16 @@ void pos_correction_mc(float distance, float turn_rad_rear, float angle_diff, fl
 	save_pos_history();
 
 	chMtxUnlock(&m_mutex_pos);
+}
+
+void pos_set_correction_imu_hook(void (pos_correction_imu_hook)(POS_STATE *pos, float dt)) {
+	m_pos_correction_imu_hook = pos_correction_imu_hook;
+}
+
+void pos_set_correction_imu_post_hook(void (pos_correction_imu_post_hook)(float dt)) {
+	m_pos_correction_imu_post_hook = pos_correction_imu_post_hook;
+}
+
+void pos_set_correction_gnss_hook(void (pos_correction_gnss_hook)(POS_STATE *pos, float dt)) {
+	m_pos_correction_gnss_hook = pos_correction_gnss_hook;
 }
