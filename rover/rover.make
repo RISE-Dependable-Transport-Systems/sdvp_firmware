@@ -135,8 +135,9 @@ CSRC = $(ALLCSRC) \
        $(COMMONDIR)/crc.c \
        $(COMMONDIR)/packet.c \
        $(COMMONDIR)/commands.c \
+       $(VEHICLEDIR)/commands_specific.c \
        $(COMMONDIR)/comm_serial.c \
-       $(COMMONDIR)/conf_general.c \
+       $(VEHICLEDIR)/conf_general.c \
        $(COMMONDIR)/log.c \
        $(COMMONDIR)/i2c_bb.c \
        $(COMMONDIR)/pos.c \

@@ -214,6 +214,7 @@ void pos_correction_imu(const float roll, const float pitch, const float yaw, co
 
 	// Correct yaw
 	// Prevent IMU drift when vehicle is stationary (only works for land vehicles)
+	// TODO: refactor define-dependent code
 	if (VEHICLE_TYPE == VEHICLE_TYPE_ROVER) {
 		if (!m_yaw_imu_clamp_set) {
 			m_yaw_imu_clamp = m_pos.yaw_imu - m_imu_yaw_offset;
