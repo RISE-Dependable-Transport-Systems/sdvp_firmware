@@ -315,6 +315,9 @@ static POS_POINT get_closest_point_to_time(int32_t time) {
 }
 
 void pos_correction_gnss(const float gnss_px, const float gnss_py, const float gnss_pz, const int32_t gnss_ms, const int fix_type) {
+	if (m_pos.gps_corr_cnt == 0.0)
+		m_pos.gps_corr_cnt = sqrtf(SQ(m_pos.px_gps - m_pos.px_gps_last) + SQ(m_pos.py_gps - m_pos.py_gps_last));
+
 	{
 		static int sample = 0;
 		if (m_pos_history_print) {
