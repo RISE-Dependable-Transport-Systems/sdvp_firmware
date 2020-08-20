@@ -44,6 +44,7 @@ typedef struct {
 	float last_pitch_error;
 	float last_yaw_process;
 	float last_yaw_error;
+	systime_t gnss_update_time;
 } MR_CONTROL_STATE;
 
 typedef struct {
@@ -109,7 +110,8 @@ void copter_control_run_iteration(float dt) {
 
 	pos_get(&m_pos_last);
 
-	if (copter_control_time_since_input_update() < INPUT_TIMEOUT_MS) {
+	// require rc input and GNSS fix, velocity integration drift (from copter_control_pos_correction_imu) is unbounded otherwise
+	if (copter_control_time_since_input_update() < INPUT_TIMEOUT_MS && TIME_I2MS(chVTTimeElapsedSinceX(m_ctrl.gnss_update_time)) < INPUT_TIMEOUT_MS) {
 		lost_signal = false;
 	} else {
 		memset(&m_rc, 0, sizeof(MR_RC_STATE));
@@ -312,6 +314,8 @@ void copter_control_pos_correction_gnss(POS_STATE *pos, float dt) {
 
 	utils_truncate_number_abs(&pos->tilt_roll_err, main_config.mr.max_tilt_error);
 	utils_truncate_number_abs(&pos->tilt_pitch_err, main_config.mr.max_tilt_error);
+
+	m_ctrl.gnss_update_time = chVTGetSystemTimeX();
 }
 
 void copter_control_pos_correction_imu(POS_STATE *pos, float dt) {
