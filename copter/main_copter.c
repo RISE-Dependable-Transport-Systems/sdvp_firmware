@@ -59,16 +59,16 @@ static void timeout_stop_cb(void) {
   palWriteLine(LINE_LED_RED, 1);
 
 //  TODO!
-//  // set servo_pwm to safe value
-//  servo_pwm_safety_stop();
+  // set servo_pwm to safe value
+  servo_pwm_safety_stop();
 }
 
 static void timeout_reset_cb(void) {
   palWriteLine(LINE_LED_RED, 0);
 
 //  TODO!
-//  // set servo_pwm to safe value
-//  servo_pwm_reset_safety_stop();
+  // set servo_pwm to safe value
+  servo_pwm_reset_safety_stop();
 }
 
 /*
@@ -106,7 +106,7 @@ int main(void) {
 
   conf_general_init();
 
-  // copter: init all servos incl. safe stop value (TODO!)
+  // copter: init all servos incl. safe stop value (TODO: currently, the copter will fall from the sky like a rock)
   servo_pwm_init(0b1111, 0.0);
 
   // Init positioning (pos), BMI160 IMU and u-blox GNSS (F9P).

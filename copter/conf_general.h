@@ -41,7 +41,7 @@
 
 // Car parameters
 #ifndef BOARD_YAW_ROT
-#define BOARD_YAW_ROT				180.0
+#define BOARD_YAW_ROT				135.0
 #endif
 
 // Autopilot settings
