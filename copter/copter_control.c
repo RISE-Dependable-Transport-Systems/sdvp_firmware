@@ -315,6 +315,9 @@ void copter_control_pos_correction_gnss(POS_STATE *pos, float dt) {
 	utils_truncate_number_abs(&pos->tilt_roll_err, main_config.mr.max_tilt_error);
 	utils_truncate_number_abs(&pos->tilt_pitch_err, main_config.mr.max_tilt_error);
 
+	if (!copter_control_is_throttle_over_tres())
+		pos->gps_ground_level = pos->pz_gps;
+
 	m_ctrl.gnss_update_time = chVTGetSystemTimeX();
 }
 
