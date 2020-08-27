@@ -71,6 +71,9 @@ static void timeout_stop_cb(void) {
 
   // set servo_pwm to safe value
   servo_pwm_safety_stop();
+
+  // disable autopilot
+  autopilot_set_active(false);
 }
 
 static void timeout_reset_cb(void) {
