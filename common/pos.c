@@ -362,14 +362,15 @@ void pos_correction_gnss(const float gnss_px, const float gnss_py, const float g
 		if (m_gps_corr_print) {
 			float diff = utils_point_distance(closest.px, closest.py, gnss_px, gnss_py) * 100.0;
 
-			terminal_printf("Diff: %.1f cm, Speed: %.1f km/h, Yaw: %.1f",
-					(double)diff, (double)(m_pos.speed * 3.6), (double)m_pos.yaw);
+			terminal_printf("Diff: %2.3f cm, Speed: %2.1f km/h, Yaw: %4.3f, GNSS Speed: %2.3f km/h",
+					(double)diff, (double)(m_pos.speed * 3.6), (double)m_pos.yaw, (double)(pos_get_gnss_speed() * 3.6));
 
 			if (sample == 0) {
 				commands_init_plot("Time (s)", "Value");
 				commands_plot_add_graph("Diff (cm)");
 				commands_plot_add_graph("Speed (0.1 * km/h)");
 				commands_plot_add_graph("Yaw (degrees)");
+				commands_plot_add_graph("GNSS Speed (0.1 * km/h)");
 			}
 
 			sample += gnss_ms - ms_before;
@@ -380,6 +381,8 @@ void pos_correction_gnss(const float gnss_px, const float gnss_py, const float g
 			commands_send_plot_points((float)sample / 1000.0, m_pos.speed * 3.6 * 10);
 			commands_plot_set_graph(2);
 			commands_send_plot_points((float)sample / 1000.0, m_pos.yaw);
+			commands_plot_set_graph(3);
+			commands_send_plot_points((float)sample / 1000.0, pos_get_gnss_speed() * 3.6 * 10);
 		} else {
 			sample = 0;
 		}
