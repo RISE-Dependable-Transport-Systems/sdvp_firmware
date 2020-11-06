@@ -30,7 +30,7 @@
 
 // Firmware version
 #define FW_VERSION_MAJOR			20
-#define FW_VERSION_MINOR			0
+#define FW_VERSION_MINOR			1
 
 // General settings
 #define ID_ALL						255
