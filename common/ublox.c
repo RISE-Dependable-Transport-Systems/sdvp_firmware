@@ -26,7 +26,7 @@
 // Settings
 #define HW_UART_DEV				UARTD6
 #define BAUDRATE_UBX_DEFAULT	38400	// F9P, see UBX-18010854
-#define BAUDRATE				115200
+#define BAUDRATE				921600  // max baudrate on F9P
 #define SERIAL_RX_BUFFER_SIZE	1024
 #define LINE_BUFFER_SIZE		256
 #define UBX_BUFFER_SIZE			3000
@@ -258,8 +258,8 @@ void ublox_init(void) {
 
 	chThdSleepMilliseconds(100);
 
-	// Make sure that the baudrate is correct on unconfigured UBX.
-	if (ublox_cfg_rate(200, 1, 0) == -1) {
+	// Make sure that the baudrate on UBX's UART1 is correct.
+	while (ublox_cfg_rate(200, 1, 0) == -1) {
 		ubx_cfg_prt_uart uart;
 		uart.baudrate = BAUDRATE;
 		uart.in_ubx = true;
@@ -276,7 +276,11 @@ void ublox_init(void) {
 		ublox_cfg_prt_uart(&uart);
 		uartStop(&HW_UART_DEV);
 		uartStart(&HW_UART_DEV, &uart_cfg);
-		ublox_cfg_rate(200, 1, 0);
+
+		// set next higher baudrate in case UBX was preconfigured
+		static int baudrate[4] = {57600, 115200, 230400, 460800};
+		static int baudrate_i = 0;
+		uart_cfg_ubx_default.speed = baudrate[baudrate_i++];
 	}
 
 	// Disable survey in
