@@ -28,13 +28,14 @@
 #include "comm_serial.h"
 #include "pos.h"
 #include "pos_gnss.h"
-#include "rtcm3_simple.h"
 #include "timeout.h"
 #include "autopilot.h"
 #include "motor_sim.h"
 #include <stdint.h>
 #include <stdarg.h>
 #include <stdio.h>
+
+#define RTCM3PREAMB              0xD3
 
 // Private variables
 static uint8_t m_send_buffer[PACKET_MAX_PL_LEN];
@@ -83,9 +84,9 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 	if (!len) {
 		return;
 	}
-
+	// Note: RTCM3PREAMB might be send when rtcm3_simple is involved. Should not be the case anymore (with F9P)
 	if (data[0] == RTCM3PREAMB) {
-		pos_gnss_input_rtcm3(data, len);
+		commands_printf("Warning: got unhandled RTCM3PREAMB");
 		return;
 	}
 
@@ -309,6 +310,7 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 		} break;
 
 		case CMD_SEND_RTCM_USB: {
+			// NOTE: transfer to u-blox handled in comm_serial to minimize delay
 			pos_gnss_input_rtcm3(data, len);
 		} break;
 
@@ -641,7 +643,7 @@ void commands_vprintf(const char* format, va_list args) {
 	}
 }
 
-#define LOG_LINE_SIZE 256
+#define LOG_LINE_SIZE 512
 void commands_printf_log_serial(char* format, ...) {
 	va_list arg;
 	va_start (arg, format);

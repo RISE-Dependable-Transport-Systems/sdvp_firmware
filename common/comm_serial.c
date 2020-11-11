@@ -19,6 +19,7 @@
 #include "ch.h"
 #include "hal.h"
 #include "commands.h"
+#include "datatypes.h"
 #include "comm_serial.h"
 #include "packet.h"
 
@@ -112,6 +113,11 @@ static THD_FUNCTION(serial_process_thread, arg) {
 static void process_packet(unsigned char *data, unsigned int len) {
 	// packets received over serial are handled by "commands",
 	// responses are send as packets over serial again
+	// special case: CMD_SEND_RTCM_USB handled here to minimize delay
+	// TODO: ublox_send is blocking, do this in another thread
+	if (data[1] == CMD_SEND_RTCM_USB) {
+		commands_ublox_send(data + 2, len - 2);
+	}
 	commands_process_packet(data, len, comm_serial_send_packet);
 }
 

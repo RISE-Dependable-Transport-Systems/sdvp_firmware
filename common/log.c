@@ -81,7 +81,34 @@ static THD_FUNCTION(log_thread, arg) {
 	for(;;) {
 		if (m_log_en) {
 			if (m_write_split) {
-				commands_printf_log_serial("//%s\n", m_log_name);
+				commands_printf_log_serial("//%s\n"
+						"//timestamp (ms),"
+						"timestamp pos today (ms),"
+						"car x,"
+						"car y,"
+						"roll,"
+						"pitch,"
+						"yaw,"
+						"roll rate,"
+						"pitch rate,"
+						"yaw rate,"
+						"accel_x,"
+						"accel_y,"
+						"accel_z,"
+						"mag_x,"
+						"mag_y,"
+						"mag_z,"
+						"speed (m/s),"
+						"tachometer,"
+						"timestamp gps sample today (ms),"
+						"lat,"
+						"lon,"
+						"height,"
+						"Travel distance,"
+						"Yaw IMU,"
+						"speed GNSS (m/s),"
+						"GNSS fix type\r\n",
+						m_log_name);
 				m_write_split = false;
 			}
 
@@ -130,14 +157,16 @@ static void print_log_ext(void) {
 			"%.2f,"   // mag_x
 			"%.2f,"   // mag_y
 			"%.2f,"   // mag_z
-			"%.3f,"   // speed
+			"%.3f,"   // speed (m/s)
 			"%d,"     // tachometer
 			"%u,"     // timestamp gps sample today (ms)
 			"%.7f,"   // lat
 			"%.7f,"   // lon
 			"%.3f,"  // height
 			"%.3f,"  // Travel distance
-			"%.2f\r\n",  // Yaw IMU
+			"%.2f,"  // Yaw IMU
+			"%.3f," // speed GNSS (m/s)
+			"%d\r\n", // GNSS fix type
 
 			ms_chtime,
 			ms_today,
@@ -164,5 +193,7 @@ static void print_log_ext(void) {
 			(double)(val.tachometer * main_config.car.gear_ratio
 			* (2.0 / main_config.car.motor_poles) * (1.0 / 6.0)
 			* main_config.car.wheel_diam * M_PI),
-			(double)pos.yaw_imu);
+			(double)pos.yaw_imu,
+			pos_get_gnss_speed(),
+			gps.fix_type);
 }

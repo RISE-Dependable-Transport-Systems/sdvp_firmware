@@ -20,6 +20,7 @@
 #define COMMANDS_H_
 
 #include <stdarg.h>
+#include "ublox.h"
 
 // Functions
 void commands_set_send_func(void(*func)(unsigned char *data, unsigned int len));
@@ -34,5 +35,7 @@ void commands_init_plot(char *namex, char *namey);
 void commands_plot_add_graph(char *name);
 void commands_plot_set_graph(int graph);
 void commands_send_plot_points(float x, float y);
+// to avoid including ublox into comm_serial
+inline void commands_ublox_send(const unsigned char *data, unsigned int len) { ublox_send(data, len); }
 
 #endif /* COMMANDS_H_ */

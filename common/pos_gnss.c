@@ -22,8 +22,7 @@
 #include "terminal.h"
 #include "commands.h"
 #include "time_today.h"
-#include "rtcm3_simple.h"
-#include "ublox.h"
+#include "rtcm3_simple.h" // to get base station pos (ENU) from rtcm3 stream
 #include "pos.h"
 #include "ch.h"
 #include <math.h>
@@ -40,7 +39,6 @@ static rtcm3_state m_rtcm_state;
 // Private functions
 static void init_gps_local(GPS_STATE *gps);
 static void cmd_terminal_reset_enu_ref(int argc, const char **argv);
-static void rtcm_rx(uint8_t *data, int len, int type);
 static void rtcm_base_rx(rtcm_ref_sta_pos_t *pos);
 
 
@@ -52,7 +50,6 @@ void pos_gnss_init(void) {
 	m_ubx_pos_valid = true;
 
 	rtcm3_init_state(&m_rtcm_state);
-	rtcm3_set_rx_callback(rtcm_rx, &m_rtcm_state);
 	rtcm3_set_rx_callback_1005_1006(rtcm_base_rx, &m_rtcm_state);
 
 	terminal_register_command_callback(
@@ -233,15 +230,9 @@ static void init_gps_local(GPS_STATE *gps) {
 }
 
 void pos_gnss_input_rtcm3(const unsigned char *data, const unsigned int len) {
-	ublox_send(data, len);
 	for (unsigned int i = 0;i < len;i++) {
 		rtcm3_input_data(data[i], &m_rtcm_state);
 	}
-}
-
-static void rtcm_rx(uint8_t *data, int len, int type) {
-	(void)type;
-	ublox_send(data, len);
 }
 
 static void rtcm_base_rx(rtcm_ref_sta_pos_t *pos) {
