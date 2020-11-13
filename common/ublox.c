@@ -31,6 +31,8 @@
 #define LINE_BUFFER_SIZE		256
 #define UBX_BUFFER_SIZE			3000
 #define CFG_ACK_WAIT_MS			100
+#define CFG_MEAS_RATE			200
+#define CFG_NAV_RATE			1
 
 // Private types
 typedef struct {
@@ -259,7 +261,7 @@ void ublox_init(void) {
 	chThdSleepMilliseconds(100);
 
 	// Make sure that the baudrate on UBX's UART1 is correct.
-	while (ublox_cfg_rate(200, 1, 0) == -1) {
+	while (ublox_cfg_rate(CFG_MEAS_RATE, CFG_NAV_RATE, 0) == -1) {
 		ubx_cfg_prt_uart uart;
 		uart.baudrate = BAUDRATE;
 		uart.in_ubx = true;
@@ -302,7 +304,7 @@ void ublox_init(void) {
 	ublox_cfg_msg(UBX_CLASS_RTCM3, UBX_RTCM3_4072_0, 0);
 	ublox_cfg_msg(UBX_CLASS_RTCM3, UBX_RTCM3_4072_1, 0);
 
-	ublox_cfg_rate(200, 1, 0);
+	ublox_cfg_rate(CFG_MEAS_RATE, CFG_NAV_RATE, 0);
 
 	// Dynamic model
 	ubx_cfg_nav5 nav5;
@@ -1278,9 +1280,9 @@ static void ubx_decode_relposned(uint8_t *msg, int len) {
 	pos.pos_e += (float)ubx_get_I1(msg, &ind) / 10000.0;
 	pos.pos_d += (float)ubx_get_I1(msg, &ind) / 10000.0;
 	if (version == 1)
-		ind += 1;
-	else
 		pos.pos_length += (float)ubx_get_I1(msg, &ind) / 10000.0;
+	else
+		ind += 1;
 
 	pos.acc_n = (float)ubx_get_U4(msg, &ind) / 10000.0;
 	pos.acc_e = (float)ubx_get_U4(msg, &ind) / 10000.0;

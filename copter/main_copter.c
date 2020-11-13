@@ -111,6 +111,7 @@ int main(void) {
 
   // Init positioning (pos), BMI160 IMU and u-blox GNSS (F9P).
   // pos input: IMU (500 Hz), GNSS (5 Hz).
+  // Note: F9P supports 10 Hz update rate, but moving base over 4G does not (TODO: -> conf_general)
   // Copter-specific correction functions are called by pos using registered hooks.
   // Copter control iteration is run _after_ IMU-based position correction (post hook).
   pos_init();

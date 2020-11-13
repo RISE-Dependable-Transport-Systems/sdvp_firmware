@@ -127,6 +127,7 @@ int main(void) {
   // Init positioning (pos), BMI160 IMU and u-blox GNSS (F9P).
   // Set bldc_interface (Motor Controller) callback
   // pos input: IMU (500 Hz), GNSS (5 Hz), Motor Controller (50 Hz)
+  // Note: F9P supports 10 Hz update rate, but moving base over 4G does not (TODO: -> conf_general)
   pos_init();
   pos_mc_init();
   pos_imu_init();
